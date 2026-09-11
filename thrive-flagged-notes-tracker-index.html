@@ -1,0 +1,1833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Flagged Notes Tracker — Thrive Peer Support Services</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --thrive-blue:#3c50a0; --thrive-blue-deep:#283c8c; --thrive-blue-dark:#1a2861;
+  --thrive-yellow:#f0c814; --thrive-pink:#c83c8c; --thrive-green:#3cb43c;
+  --bg:#f7f3ec; --paper:#ffffff; --ink:#1a2861; --ink-soft:#3e4a78;
+  --muted:#8089a8; --rule:#e6dfd2; --rule-strong:#cdc4b2;
+  --good:#2d8c30; --good-bg:#dcf0dc;
+  --warn:#a07e0a; --warn-bg:#fbf0c4;
+  --bad:#a52d6d; --bad-bg:#f7dde6;
+  --esc:#5B3A8C; --esc-bg:#EFE7F7;
+  --shadow:0 1px 0 rgba(40,60,140,.04), 0 8px 28px -12px rgba(40,60,140,.22);
+  --radius-lg:14px; --radius:10px; --radius-sm:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'IBM Plex Sans',system-ui,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;font-size:14px;-webkit-font-smoothing:antialiased;}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-thumb{background:var(--rule-strong);border-radius:1px}
+
+.topbar{background:linear-gradient(95deg, var(--thrive-blue-deep) 0%, var(--thrive-blue) 100%);color:#f5f1e8;padding:14px 28px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;border-bottom:3px solid var(--thrive-yellow);position:sticky;top:0;z-index:100;}
+.topbar .badge{font-family:'Fraunces',serif;font-style:italic;font-size:16px;color:#fff;font-weight:400;}
+.topbar .badge .sep{color:rgba(255,255,255,.4);font-style:normal;margin:0 8px;}
+.topbar .badge .sub{font-family:'IBM Plex Mono',monospace;font-style:normal;font-size:11px;letter-spacing:.08em;color:#cdd4f0;text-transform:uppercase;}
+.topbar .who{font-size:12.5px;color:#dde3f7;text-align:right;line-height:1.5;}
+.topbar .who strong{color:#fff;font-weight:600;}
+.topbar .who .scope{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:#aab4e0;}
+.signout-btn{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.22);color:#fff;border-radius:var(--radius-sm);padding:6px 13px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:600;cursor:pointer;margin-left:10px;letter-spacing:.03em;}
+.signout-btn:hover{background:rgba(255,255,255,.18);}
+.content{max-width:1080px;margin:0 auto;padding:24px 24px 60px;}
+
+/* login */
+.login-wrap{max-width:400px;margin:100px auto;background:var(--paper);border:1px solid var(--rule);border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:36px;}
+.login-wrap .eyebrow{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--thrive-blue);font-weight:600;margin-bottom:6px;}
+.login-wrap h2{font-family:'Fraunces',serif;font-weight:400;font-size:24px;color:var(--ink);margin-bottom:8px;letter-spacing:-0.02em;}
+.login-wrap p{font-size:12.5px;color:var(--muted);margin-bottom:22px;line-height:1.55;}
+.login-wrap label{display:block;font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:600;color:var(--ink-soft);margin-bottom:5px;margin-top:16px;text-transform:uppercase;letter-spacing:.06em;}
+.login-wrap input{width:100%;border:1.5px solid var(--rule-strong);border-radius:var(--radius-sm);padding:10px 13px;font-size:13.5px;color:var(--ink);font-family:inherit;background:#fdfbf6;}
+.login-wrap input:focus{outline:none;border-color:var(--thrive-yellow);}
+.login-btn{width:100%;margin-top:20px;padding:12px;background:var(--thrive-blue);color:#fff;border:none;border-radius:var(--radius-sm);font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;}
+.login-btn:hover{background:var(--thrive-blue-deep);}
+.login-btn:disabled{background:#AEB6BE;cursor:not-allowed;}
+.login-error{margin-top:14px;font-size:12.5px;color:var(--bad);background:var(--bad-bg);border:1px solid #e6b8cf;border-radius:var(--radius-sm);padding:11px 13px;display:none;line-height:1.5;}
+.login-error.visible{display:block;}
+
+/* KPI strip */
+.kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px;}
+@media (max-width:900px){.kpi-row{grid-template-columns:repeat(2,1fr);}}
+.kpi{background:var(--paper);border:1px solid var(--rule);border-radius:var(--radius);border-left:5px solid var(--thrive-blue);padding:16px 20px;box-shadow:var(--shadow);}
+.kpi.bad{border-left-color:var(--bad);}
+.kpi.warn{border-left-color:var(--warn);}
+.kpi.esc{border-left-color:var(--esc);}
+.kpi .lbl{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);font-weight:600;margin-bottom:6px;}
+.kpi .val{font-family:'Fraunces',serif;font-size:28px;font-weight:400;letter-spacing:-0.02em;color:var(--ink);line-height:1.1;}
+.kpi.bad .val{color:var(--bad);}
+.kpi.warn .val{color:var(--warn);}
+.kpi.esc .val{color:var(--esc);}
+
+/* filters */
+.filter-bar{display:flex;align-items:center;gap:6px;background:var(--paper);border:1px solid var(--rule);border-radius:var(--radius);padding:6px;margin-bottom:20px;flex-wrap:wrap;box-shadow:var(--shadow);}
+.filter-tab{padding:9px 14px;font-family:'IBM Plex Mono',monospace;font-size:11.5px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;cursor:pointer;color:var(--ink-soft);border:1px solid transparent;border-radius:var(--radius-sm);}
+.filter-tab.active{color:#fff;background:var(--thrive-blue);border-color:var(--thrive-blue);}
+.filter-tab:hover:not(.active){color:var(--ink);background:var(--bg);border-color:var(--rule);}
+.filter-spacer{flex:1;}
+.refresh-btn{padding:9px 16px;border-radius:var(--radius-sm);font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid var(--rule-strong);background:var(--paper);color:var(--ink-soft);}
+.refresh-btn:hover{border-color:var(--thrive-blue);color:var(--thrive-blue);background:var(--bg);}
+.range-select{padding:8px 10px;border-radius:var(--radius-sm);font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;border:1.5px solid var(--rule-strong);background:var(--paper);color:var(--ink-soft);cursor:pointer;}
+.range-select:hover{border-color:var(--thrive-blue);color:var(--thrive-blue);}
+
+/* cards */
+.note-card{background:var(--paper);border:1px solid var(--rule);border-radius:var(--radius-lg);margin-bottom:16px;overflow:hidden;box-shadow:var(--shadow);}
+.note-card.concern{border-left:5px solid var(--bad);}
+.note-card.itp{border-left:5px solid var(--warn);}
+.note-card.reviewed{opacity:0.6;}
+.note-top{padding:18px 22px;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;border-bottom:1px solid var(--rule);}
+.note-meta{font-size:13px;color:var(--ink-soft);line-height:1.7;}
+.note-meta .client{font-weight:700;font-size:15px;color:var(--ink);font-family:'IBM Plex Mono',monospace;}
+.note-meta .divider{color:var(--muted);margin:0 6px;}
+.badge-row{margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;}
+.badge{display:inline-block;padding:4px 10px;border-radius:6px;font-size:10.5px;font-weight:700;letter-spacing:.02em;font-family:'IBM Plex Mono',monospace;border:1px solid rgba(0,0,0,.05);}
+.badge-concern{background:var(--bad-bg);color:var(--bad);}
+.badge-itp{background:var(--warn-bg);color:var(--warn);}
+.badge-other{background:#e8ebf6;color:var(--thrive-blue);}
+.badge-reviewed{background:var(--good-bg);color:var(--good);}
+.badge-rejected{background:var(--bad-bg);color:var(--bad);}
+.badge-escalated{background:var(--esc-bg);color:var(--esc);}
+.badge-director-escalated{background:#e8ebf6;color:var(--thrive-blue);}
+.reject-reason-box{font-size:12px;color:var(--bad);background:var(--bad-bg);border-radius:var(--radius-sm);padding:9px 12px;margin-top:10px;border:1px solid #e6b8cf;}
+.concern-types{margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;}
+.concern-types span{display:inline-block;background:var(--bg);color:var(--ink-soft);font-size:11px;font-weight:500;padding:4px 10px;border-radius:6px;border:1px solid var(--rule);}
+.note-actions{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;}
+.action-row{display:flex;flex-direction:column;gap:6px;align-items:stretch;min-width:160px;}
+.action-btn{padding:9px 18px;border:none;border-radius:var(--radius-sm);font-family:'IBM Plex Mono',monospace;font-size:11.5px;font-weight:700;letter-spacing:.02em;text-transform:uppercase;cursor:pointer;white-space:nowrap;}
+.action-btn.approve{background:var(--good);color:#fff;}
+.action-btn.approve:hover{background:#246623;}
+.action-btn.reject{background:var(--paper);color:var(--bad);border:1.5px solid #e6b8cf;}
+.action-btn.reject:hover{background:var(--bad-bg);}
+.action-btn.escalate{background:var(--paper);color:var(--esc);border:1.5px solid #d3c2ea;}
+.action-btn.escalate:hover{background:var(--esc-bg);}
+.action-btn:disabled{opacity:0.5;cursor:not-allowed;}
+.escalated-tag{font-size:11.5px;font-weight:700;color:var(--esc);margin-top:8px;font-family:'IBM Plex Mono',monospace;}
+.escalated-tag.director{color:var(--thrive-blue);}
+.reviewed-note{font-size:11.5px;color:var(--good);text-align:right;font-family:'IBM Plex Mono',monospace;}
+.empty-state{text-align:center;padding:60px 20px;color:var(--muted);}
+.empty-state p{font-size:14px;}
+.loading-state{text-align:center;padding:40px;color:var(--muted);font-size:13px;font-family:'IBM Plex Mono',monospace;}
+
+/* note content -- collapsed by default; the toggle button below opens it */
+.note-content{padding:20px 22px;background:var(--bg);}
+.note-content .field-block{margin-bottom:16px;}
+.note-content .field-block:last-child{margin-bottom:0;}
+.note-content .eyebrow{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--thrive-blue);margin-bottom:6px;}
+.note-content p{font-size:13.5px;color:var(--ink);line-height:1.65;white-space:pre-wrap;background:var(--paper);border:1px solid var(--rule);border-radius:var(--radius-sm);padding:13px 15px;box-shadow:var(--shadow);}
+.collapse-toggle{background:var(--paper);border:1.5px solid var(--rule-strong);color:var(--thrive-blue);font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;padding:8px 15px;margin-top:12px;border-radius:var(--radius-sm);letter-spacing:.02em;text-transform:uppercase;}
+.collapse-toggle:hover{color:#fff;background:var(--thrive-blue);border-color:var(--thrive-blue);}
+
+.email-block{border-top:1px solid var(--rule);margin-top:18px;padding-top:16px;}
+.email-block label{display:block;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;color:var(--ink-soft);margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em;}
+.email-block textarea{width:100%;border:1.5px solid var(--rule-strong);border-radius:var(--radius-sm);padding:10px 12px;font-size:13px;font-family:inherit;resize:vertical;min-height:52px;margin-bottom:9px;background:var(--paper);}
+.email-btn{padding:9px 18px;background:var(--thrive-yellow);color:var(--thrive-blue-dark);border:none;border-radius:var(--radius-sm);font-family:'IBM Plex Mono',monospace;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.02em;cursor:pointer;}
+.email-btn:hover{filter:brightness(.94);}
+.email-hint{font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5;}
+.no-note-text{font-size:12.5px;color:var(--muted);font-style:italic;padding:8px 0;}
+.partial-note-text{font-size:12px;color:var(--warn);background:var(--warn-bg);border-radius:var(--radius-sm);padding:9px 12px;margin-bottom:12px;border:1px solid #e6d38a;}
+.no-email-note{font-size:12.5px;color:var(--muted);padding:8px 0;}
+
+@media print{ .filter-bar, .action-row, .refresh-btn, .signout-btn{ display:none !important; } }
+
+/* mode toggle */
+.mode-toggle{display:flex;gap:6px;margin-bottom:22px;background:var(--paper);border:1px solid var(--rule);border-radius:var(--radius);padding:6px;box-shadow:var(--shadow);flex-wrap:wrap;}
+.mode-tab{padding:10px 18px;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;cursor:pointer;color:var(--ink-soft);border:1px solid transparent;border-radius:var(--radius-sm);}
+.mode-tab.active{color:#fff;background:var(--thrive-blue);border-color:var(--thrive-blue);}
+.mode-tab .count{display:inline-block;margin-left:6px;background:var(--rule);color:var(--ink-soft);border-radius:6px;padding:1px 7px;font-size:10.5px;}
+.mode-tab.active .count{background:var(--thrive-yellow);color:var(--thrive-blue-dark);}
+.mode-tab:hover:not(.active){color:var(--ink);background:var(--bg);border-color:var(--rule);}
+
+/* Leadership dashboard */
+.lead-section{margin-bottom:32px;}
+.lead-section-title{font-family:'Fraunces',serif;font-size:18px;color:var(--ink);margin-bottom:4px;letter-spacing:-0.01em;}
+.lead-section-sub{font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.5;}
+.lead-table{width:100%;border-collapse:collapse;background:var(--paper);border:1px solid var(--rule);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);}
+.lead-table th{text-align:left;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);font-weight:600;padding:11px 16px;border-bottom:1px solid var(--rule);background:var(--bg);}
+.lead-table td{padding:11px 16px;font-size:13px;border-bottom:1px solid var(--rule);color:var(--ink);}
+.lead-table tr:last-child td{border-bottom:none;}
+.lead-table td.num{font-family:'IBM Plex Mono',monospace;text-align:right;}
+.lead-table tr.high-risk td{background:var(--bad-bg);}
+.bar-track{background:var(--rule);border-radius:2px;height:8px;width:100%;overflow:hidden;}
+.bar-fill{height:100%;border-radius:2px;}
+.bar-fill.ok{background:var(--good);}
+.bar-fill.warn{background:var(--warn);}
+.bar-fill.bad{background:var(--bad);}
+.month-row{display:flex;align-items:center;gap:12px;padding:6px 0;}
+.month-label{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-soft);width:70px;flex-shrink:0;}
+.month-bars{flex:1;display:flex;gap:3px;height:16px;}
+.month-bar-seg{border-radius:1px;}
+.month-count{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);width:100px;text-align:right;flex-shrink:0;}
+.legend-row{display:flex;gap:16px;margin-bottom:14px;flex-wrap:wrap;}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--ink-soft);}
+.legend-swatch{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
+.lead-note{font-size:12px;color:var(--muted);background:var(--paper);border:1px solid var(--rule);border-radius:var(--radius-sm);padding:13px 15px;line-height:1.6;}
+.aging-item{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--rule);font-size:13px;}
+.aging-item:last-child{border-bottom:none;}
+.aging-days{font-family:'IBM Plex Mono',monospace;font-weight:700;color:var(--bad);}
+.aging-days.ok{color:var(--good);}
+.resolved-tag{font-size:11px;color:var(--good);font-family:'IBM Plex Mono',monospace;}
+
+/* pattern cards */
+.pattern-intro{font-size:12.5px;color:var(--ink-soft);background:var(--paper);border:1px solid var(--rule);border-radius:var(--radius);padding:14px 18px;margin-bottom:18px;line-height:1.6;}
+.pattern-intro strong{color:var(--ink);}
+.pattern-card{background:var(--paper);border:1px solid var(--rule);border-left:5px solid var(--thrive-blue);border-radius:var(--radius-lg);padding:18px 22px;margin-bottom:14px;box-shadow:var(--shadow);}
+.pattern-card.graduation{border-left-color:var(--good);}
+.pattern-card.disengagement{border-left-color:var(--warn);}
+.pattern-card.repeat_safety{border-left-color:var(--bad);}
+.pattern-card.repeat_itp{border-left-color:var(--esc);}
+.pattern-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;}
+.pattern-meta{flex:1;min-width:0;}
+.ack-btn{flex-shrink:0;}
+.pattern-meta .client{font-weight:700;font-size:15px;color:var(--ink);font-family:'IBM Plex Mono',monospace;}
+.pattern-meta .divider{color:var(--muted);margin:0 6px;}
+.pattern-label{display:inline-block;margin-top:8px;padding:4px 10px;border-radius:6px;font-size:10.5px;font-weight:700;letter-spacing:.02em;font-family:'IBM Plex Mono',monospace;}
+.pattern-label.graduation{background:var(--good-bg);color:var(--good);}
+.pattern-label.disengagement{background:var(--warn-bg);color:var(--warn);}
+.pattern-label.repeat_safety{background:var(--bad-bg);color:var(--bad);}
+.pattern-label.repeat_itp{background:var(--esc-bg);color:var(--esc);}
+.pattern-evidence{margin-top:10px;font-size:12.5px;color:var(--ink-soft);line-height:1.6;}
+.pattern-evidence li{margin-bottom:3px;}
+.pattern-evidence ul{margin-left:18px;}
+.ack-btn{padding:8px 16px;border:1.5px solid var(--rule-strong);background:var(--paper);color:var(--ink-soft);border-radius:var(--radius-sm);font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;cursor:pointer;white-space:nowrap;}
+.ack-btn:hover{border-color:var(--thrive-blue);color:var(--thrive-blue);}
+.ack-btn:disabled{opacity:0.5;cursor:not-allowed;}
+.pattern-count-note{font-size:11.5px;color:var(--muted);margin-bottom:14px;font-family:'IBM Plex Mono',monospace;}
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<script>
+// ── SUPABASE CONFIG ──
+const SUPABASE_URL = 'https://fussjixekyhwuromauff.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1c3NqaXhla3lod3Vyb21hdWZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI3MjMzNzYsImV4cCI6MjA5ODI5OTM3Nn0.3yfRu5LMDlIasvc0cu_GOcXAquji6ZYUkp3dgxk1j2M';
+const TABLE = 'dap_note_analytics';
+
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let currentReviewer = null; // { name, role, divisions }
+let currentFilter = 'unreviewed';
+let currentDateRangeDays = 90; // 'all' or a number of days; unreviewed notes are always included regardless
+let allNotes = [];
+let lastSyncedAt = null; // when notes were last successfully pulled from the server — shown near Refresh so reviewers know how current the list is
+
+function fmtLastSynced(dt){
+  if(!dt) return 'not yet synced';
+  return dt.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' at '+dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+}
+
+const app = document.getElementById('app');
+
+function escapeHtml(str) {
+  var div = document.createElement('div');
+  div.textContent = str == null ? '' : String(str);
+  return div.innerHTML;
+}
+
+// ── ROSTER / SUPERVISION SCOPE ──
+// A reviewer with role 'org_wide' (e.g. Muneera) sees everything. Anyone else
+// (a division director/manager) sees only notes for the providers listed as
+// theirs in the `roster` table -- set up and maintained in Supabase, not in
+// this file. Returns null for "no restriction" or an array of provider_emails.
+function scopedProviderEmails() {
+  return (currentReviewer && currentReviewer.role === 'org_wide') ? null : ((currentReviewer && currentReviewer.supervisedProviders) || []);
+}
+
+async function attachRosterScope(reviewer, userId) {
+  if (reviewer.role === 'org_wide') {
+    reviewer.supervisedProviders = null;
+    return;
+  }
+  var { data, error } = await sb.from('roster').select('provider_email').eq('manager_id', userId);
+  if (error) {
+    console.error('Could not load roster/supervision scope', error);
+    // Fail closed: if we can't tell what this reviewer should see, show
+    // nothing rather than risk showing another division's notes.
+    reviewer.supervisedProviders = [];
+    return;
+  }
+  reviewer.supervisedProviders = (data || []).map(function(r){ return r.provider_email; }).filter(Boolean);
+}
+
+// Applies roster scoping to a notes-table query builder. Returns null if the
+// caller should short-circuit to an empty result (a manager with no roster
+// entries yet) instead of making a request.
+function scopeNotesQuery(query) {
+  var emails = scopedProviderEmails();
+  if (emails === null) return query;
+  if (!emails.length) return null;
+  return query.in('provider_email', emails);
+}
+
+// Shared definition of "this note has a flag worth someone's attention" --
+// used both for the note card's border/color and for the Routine filter, so
+// the two never drift out of sync.
+function noteHasAnyFlag(n) {
+  return !!(n.concern_flagged || n.ai_concern_flagged || n.itp_flagged
+    || n.compliance_grade === 'Needs Improvement' || n.compliance_grade === 'Non-Compliant');
+}
+
+// ── LOGIN ──
+function renderLogin(errorMsg) {
+  app.innerHTML = `
+    <div class="topbar">
+      <span class="badge">Thrive<span class="sep">/</span>Flagged Notes Tracker <span class="sub">&middot; Clinical Oversight</span></span>
+    </div>
+    <div class="login-wrap">
+      <div class="eyebrow">Restricted Access</div>
+      <h2>Sign in</h2>
+      <p>Access is restricted to clinical/community leadership and division directors. Contact Brandon if you need an account.</p>
+      <label for="loginEmail">Email</label>
+      <input type="email" id="loginEmail" placeholder="you@thrivepeersupport.com"/>
+      <label for="loginPassword">Password</label>
+      <input type="password" id="loginPassword" placeholder="••••••••"/>
+      <button class="login-btn" id="loginBtn">Sign In</button>
+      <div class="login-error ${errorMsg ? 'visible' : ''}" id="loginError">${errorMsg || ''}</div>
+    </div>
+  `;
+  document.getElementById('loginBtn').onclick = handleLogin;
+  document.getElementById('loginPassword').addEventListener('keydown', function(e){
+    if (e.key === 'Enter') handleLogin();
+  });
+}
+
+async function handleLogin() {
+  var email = document.getElementById('loginEmail').value.trim();
+  var password = document.getElementById('loginPassword').value;
+  var btn = document.getElementById('loginBtn');
+  btn.disabled = true;
+  btn.textContent = 'Signing in…';
+
+  var { data, error } = await sb.auth.signInWithPassword({ email: email, password: password });
+  if (error) {
+    renderLogin('Sign-in failed: ' + error.message);
+    return;
+  }
+
+  var reviewerLookup = await sb.from('reviewers').select('name, role, divisions, email').eq('id', data.user.id).single();
+  if (reviewerLookup.error || !reviewerLookup.data) {
+    renderLogin('Signed in, but no reviewer profile is set up for this account yet. Contact Brandon to be added to the reviewers table.');
+    await sb.auth.signOut();
+    return;
+  }
+
+  currentReviewer = reviewerLookup.data;
+  await attachRosterScope(currentReviewer, data.user.id);
+  await loadAndRenderDashboard();
+}
+
+async function handleSignOut() {
+  await sb.auth.signOut();
+  currentReviewer = null;
+  renderLogin();
+}
+
+// ── DATA ──
+async function loadAndRenderDashboard() {
+  // renderShell rebuilds the whole page, including resetting the
+  // Leadership Dashboard and Caseload Patterns tabs back to their static
+  // "Loading..." placeholder. Their load-guards must reset here too, or
+  // revisiting those tabs after any note action (approve/reject/escalate/
+  // grade/refresh) shows a stuck placeholder that never actually reloads.
+  patternsLoaded = false;
+  leadershipLoaded = false;
+
+  renderShell(true);
+
+  // General note oversight: every submitted note loads, not just flagged
+  // ones. Concern/ITP/compliance flags are filters and badges on top of the
+  // full list now, rather than a gate on what appears at all.
+  var baseQuery = sb.from(TABLE).select('*').order('session_date', { ascending: false });
+
+  // Date-range window keeps the day-to-day list from growing unbounded now
+  // that everything loads -- but it NEVER hides a note still needing review,
+  // no matter how old: "reviewed=false OR within the window", not just
+  // "within the window". Only already-closed-out old notes drop out of view.
+  if (currentDateRangeDays !== 'all') {
+    var cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - currentDateRangeDays);
+    var cutoffStr = cutoff.toISOString().slice(0, 10);
+    baseQuery = baseQuery.or('reviewed.eq.false,session_date.gte.' + cutoffStr);
+  }
+
+  var query = scopeNotesQuery(baseQuery);
+  if (!query) {
+    // No roster entries for this reviewer yet -- nothing to show.
+    allNotes = [];
+    renderShell(false);
+    return;
+  }
+  var { data, error } = await query;
+
+  if (error) {
+    document.getElementById('notesList').innerHTML = '<div class="empty-state"><p>Error loading notes: ' + escapeHtml(error.message) + '</p></div>';
+    return;
+  }
+
+  allNotes = data || [];
+  lastSyncedAt = new Date();
+  renderShell(false);
+}
+
+function renderShell(loading) {
+  var scopeLabel;
+  if (currentReviewer.role === 'org_wide') {
+    scopeLabel = 'All divisions';
+  } else {
+    var supervised = currentReviewer.supervisedProviders || [];
+    if (!supervised.length) scopeLabel = 'No providers on your roster yet — contact Brandon';
+    else if (supervised.length <= 6) scopeLabel = 'Supervising: ' + supervised.join(', ');
+    else scopeLabel = 'Supervising ' + supervised.length + ' providers';
+  }
+  var open = allNotes.filter(function(n){ return !n.reviewed; });
+  app.innerHTML = `
+    <div class="topbar">
+      <span class="badge">Thrive<span class="sep">/</span>Flagged Notes Tracker <span class="sub">&middot; Clinical Oversight</span></span>
+      <div class="who">
+        Signed in as <strong>${escapeHtml(currentReviewer.name)}</strong>
+        <div class="scope">Scope: ${escapeHtml(scopeLabel)}</div>
+        <button class="signout-btn" id="signOutBtn">Sign Out</button>
+      </div>
+    </div>
+    <div class="content">
+      <div class="mode-toggle">
+        <div class="mode-tab" data-mode="notes">Note Review</div>
+        <div class="mode-tab" data-mode="patterns">Caseload Patterns</div>
+        <div class="mode-tab" data-mode="leadership">Leadership Dashboard</div>
+      </div>
+
+      <div id="notesMode">
+        <div class="kpi-row">
+          <div class="kpi"><div class="lbl">Total Notes (in view)</div><div class="val">${allNotes.length}</div></div>
+          <div class="kpi bad"><div class="lbl">Needs Review</div><div class="val">${open.length}</div></div>
+          <div class="kpi"><div class="lbl">Escalated to Director (Open)</div><div class="val">${allNotes.filter(function(n){return n.director_escalated && !n.director_escalated_ack;}).length}</div></div>
+          <div class="kpi esc"><div class="lbl">Escalated to Clinical (Open)</div><div class="val">${allNotes.filter(function(n){return n.escalated && !n.resolved;}).length}</div></div>
+          <div class="kpi bad"><div class="lbl">AI-Caught, Not Self-Reported</div><div class="val">${allNotes.filter(function(n){return n.ai_concern_flagged && !n.concern_flagged;}).length}</div></div>
+          <div class="kpi bad"><div class="lbl">Compliance Flags</div><div class="val">${allNotes.filter(function(n){return n.compliance_grade === 'Needs Improvement' || n.compliance_grade === 'Non-Compliant';}).length}</div></div>
+        </div>
+
+        <div class="filter-bar">
+          <div class="filter-tab" data-filter="unreviewed">Needs Review</div>
+          <div class="filter-tab" data-filter="director_escalated">Escalated to Director</div>
+          <div class="filter-tab" data-filter="escalated">Escalated to Clinical</div>
+          <div class="filter-tab" data-filter="concern">Concern</div>
+          <div class="filter-tab" data-filter="itp">ITP</div>
+          <div class="filter-tab" data-filter="compliance">Compliance</div>
+          <div class="filter-tab" data-filter="routine">Routine</div>
+          <div class="filter-tab" data-filter="all">All</div>
+          <div class="filter-spacer"></div>
+          <select class="range-select" id="dateRangeSelect" title="Notes still needing review always show, regardless of this window.">
+            <option value="90">Last 90 days</option>
+            <option value="180">Last 6 months</option>
+            <option value="365">Last year</option>
+            <option value="all">All time</option>
+          </select>
+          ${currentReviewer.role === 'org_wide' ? '<button class="refresh-btn" id="gradeBatchBtn">Grade Next Batch</button>' : ''}
+          <button class="refresh-btn" id="refreshBtn">&#8635; Refresh</button>
+          <span id="lastSyncedLabel" title="This list only updates when you sign in or hit Refresh — it does not auto-poll." style="font-size:11px;color:#6B7280;align-self:center;white-space:nowrap">Synced: ${fmtLastSynced(lastSyncedAt)}</span>
+        </div>
+        <div id="gradeBatchStatus" class="lead-section-sub" style="margin-top:-4px;"></div>
+        <div id="notesList">${loading ? '<div class="loading-state">Loading flagged notes&hellip;</div>' : ''}</div>
+      </div>
+
+      <div id="patternsMode" style="display:none;">
+        <div class="loading-state">Loading caseload patterns&hellip;</div>
+      </div>
+
+      <div id="leadershipMode" style="display:none;">
+        <div class="loading-state">Loading leadership dashboard&hellip;</div>
+      </div>
+    </div>
+  `;
+  document.getElementById('signOutBtn').onclick = handleSignOut;
+  document.getElementById('refreshBtn').onclick = loadAndRenderDashboard;
+  var gradeBatchBtnEl = document.getElementById('gradeBatchBtn');
+  if (gradeBatchBtnEl) gradeBatchBtnEl.onclick = gradeNextBatch;
+  var dateRangeSelectEl = document.getElementById('dateRangeSelect');
+  if (dateRangeSelectEl) {
+    dateRangeSelectEl.value = String(currentDateRangeDays);
+    dateRangeSelectEl.onchange = function(){
+      currentDateRangeDays = (dateRangeSelectEl.value === 'all') ? 'all' : parseInt(dateRangeSelectEl.value, 10);
+      loadAndRenderDashboard();
+    };
+  }
+  document.querySelectorAll('.filter-tab').forEach(function(tab){
+    tab.onclick = function(){ currentFilter = tab.getAttribute('data-filter'); renderNotesList(); };
+  });
+  document.querySelectorAll('.mode-tab').forEach(function(tab){
+    tab.onclick = function(){ switchMode(tab.getAttribute('data-mode')); };
+  });
+  switchMode(currentMode);
+  if (!loading) renderNotesList();
+}
+
+var currentMode = 'notes';
+var patternsLoaded = false;
+var leadershipLoaded = false;
+
+function switchMode(mode) {
+  currentMode = mode;
+  document.querySelectorAll('.mode-tab[data-mode]').forEach(function(tab){
+    tab.classList.toggle('active', tab.getAttribute('data-mode') === mode);
+  });
+  var notesEl = document.getElementById('notesMode');
+  var patternsEl = document.getElementById('patternsMode');
+  var leadershipEl = document.getElementById('leadershipMode');
+  if (!notesEl || !patternsEl || !leadershipEl) return;
+  notesEl.style.display = (mode === 'notes') ? 'block' : 'none';
+  patternsEl.style.display = (mode === 'patterns') ? 'block' : 'none';
+  leadershipEl.style.display = (mode === 'leadership') ? 'block' : 'none';
+  if (mode === 'patterns' && !patternsLoaded) {
+    patternsLoaded = true;
+    loadCaseloadPatterns();
+  }
+  if (mode === 'leadership' && !leadershipLoaded) {
+    leadershipLoaded = true;
+    loadLeadershipDashboard();
+  }
+}
+
+function renderNotesList() {
+  document.querySelectorAll('.filter-tab').forEach(function(tab){
+    tab.classList.toggle('active', tab.getAttribute('data-filter') === currentFilter);
+  });
+
+  var filtered = allNotes.filter(function(n){
+    if (currentFilter === 'unreviewed') return !n.reviewed;
+    if (currentFilter === 'director_escalated') return n.director_escalated;
+    if (currentFilter === 'escalated') return n.escalated;
+    if (currentFilter === 'concern') return n.concern_flagged;
+    if (currentFilter === 'itp') return n.itp_flagged;
+    if (currentFilter === 'compliance') return n.compliance_grade === 'Needs Improvement' || n.compliance_grade === 'Non-Compliant';
+    if (currentFilter === 'routine') return !noteHasAnyFlag(n);
+    return true;
+  });
+
+  var listEl = document.getElementById('notesList');
+  if (filtered.length === 0) {
+    listEl.innerHTML = '<div class="empty-state"><p>' + (currentFilter === 'unreviewed' ? 'All caught up — no unreviewed flags in your scope.' : 'No notes match this filter.') + '</p></div>';
+    return;
+  }
+
+  listEl.innerHTML = filtered.map(renderNoteCard).join('');
+  filtered.forEach(function(note){
+    var approveBtn = document.getElementById('approveBtn_' + note.id);
+    if (approveBtn) approveBtn.onclick = function(){ resolveNote(note.id, 'approved'); };
+
+    var rejectBtn = document.getElementById('rejectBtn_' + note.id);
+    if (rejectBtn) rejectBtn.onclick = function(){ rejectNote(note); };
+
+    var escalateDirectorBtn = document.getElementById('escalateDirectorBtn_' + note.id);
+    if (escalateDirectorBtn) escalateDirectorBtn.onclick = function(){ escalateToDirector(note); };
+
+    var escalateClinicalBtn = document.getElementById('escalateClinicalBtn_' + note.id);
+    if (escalateClinicalBtn) escalateClinicalBtn.onclick = function(){ escalateToClinical(note); };
+
+    var ackDirectorBtn = document.getElementById('ackDirectorBtn_' + note.id);
+    if (ackDirectorBtn) ackDirectorBtn.onclick = function(){ acknowledgeDirectorEscalation(note); };
+
+    var collapseBtn = document.getElementById('collapseToggle_' + note.id);
+    var contentDiv = document.getElementById('noteContent_' + note.id);
+    if (collapseBtn && contentDiv) {
+      collapseBtn.onclick = function(){
+        var nowHidden = contentDiv.style.display !== 'none';
+        contentDiv.style.display = nowHidden ? 'none' : 'block';
+        collapseBtn.textContent = nowHidden ? 'Show note & provider contact' : 'Hide note & provider contact';
+      };
+    }
+
+    var emailBtn = document.getElementById('emailBtn_' + note.id);
+    if (emailBtn) emailBtn.onclick = function(){ emailProvider(note); };
+  });
+}
+
+async function resolveNote(noteId, outcome) {
+  var btn = document.getElementById(outcome === 'approved' ? 'approveBtn_' + noteId : 'rejectBtn_' + noteId);
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+
+  var { error } = await sb.from(TABLE).update({
+    reviewed: true, reviewed_by: currentReviewer.name,
+    reviewed_date: new Date().toISOString(), review_outcome: outcome
+  }).eq('id', noteId);
+
+  if (error) {
+    alert('Could not save: ' + error.message);
+    if (btn) { btn.disabled = false; btn.textContent = outcome === 'approved' ? 'Approve' : 'Reject'; }
+    return;
+  }
+  await loadAndRenderDashboard();
+}
+
+async function rejectNote(note) {
+  var reason = prompt('Why is this note being rejected? (Logged, and can be included in the email to the provider.)');
+  if (reason === null) return;
+  reason = reason.trim();
+
+  var btn = document.getElementById('rejectBtn_' + note.id);
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+
+  var { error } = await sb.from(TABLE).update({
+    reviewed: true, reviewed_by: currentReviewer.name,
+    reviewed_date: new Date().toISOString(), review_outcome: 'rejected',
+    reject_reason: reason || null
+  }).eq('id', note.id);
+
+  if (error) {
+    alert('Could not save: ' + error.message);
+    if (btn) { btn.disabled = false; btn.textContent = 'Reject'; }
+    return;
+  }
+
+  if (note.provider_email) {
+    var wantsEmail = confirm('Note marked as rejected. Send an email to ' + note.provider_email + ' now?');
+    if (wantsEmail) emailProvider(Object.assign({}, note, { _rejectReason: reason }));
+  }
+  await loadAndRenderDashboard();
+}
+
+// ── ESCALATE TO DIRECTOR: routes straight to the note's provider's actual
+// supervisor via the roster table (Supabase), not a division/program guess.
+// Independent of clinical escalation below -- a note can go to the director,
+// to clinical, or both.
+async function escalateToDirector(note) {
+  var btn = document.getElementById('escalateDirectorBtn_' + note.id);
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+
+  var directorName = null;
+  if (note.provider_email) {
+    var rosterRes = await sb.from('roster').select('manager_id').eq('provider_email', note.provider_email).maybeSingle();
+    if (!rosterRes.error && rosterRes.data) {
+      var mgrRes = await sb.from('reviewers').select('name, email').eq('id', rosterRes.data.manager_id).single();
+      if (!mgrRes.error && mgrRes.data) { directorName = mgrRes.data.name; }
+    }
+  }
+
+  // No email goes out here -- setting director_escalated is what surfaces this
+  // note on the director's hub tasks. director_escalated_to is kept purely as
+  // a record of who the roster resolved to (useful for auditing / debugging a
+  // bad roster mapping), not for addressing an email.
+  var { error } = await sb.from(TABLE).update({
+    director_escalated: true, director_escalated_by: currentReviewer.name,
+    director_escalated_date: new Date().toISOString(),
+    director_escalated_to: directorName
+  }).eq('id', note.id);
+
+  if (error) {
+    alert('Could not escalate to director: ' + error.message);
+    if (btn) { btn.disabled = false; btn.textContent = 'Escalate to Director'; }
+    return;
+  }
+
+  await loadAndRenderDashboard();
+}
+
+// A director marks an "Escalate to Director" note as seen/handled. Separate
+// from Approve/Reject, since a director may want to acknowledge awareness
+// before (or instead of) closing the note out.
+async function acknowledgeDirectorEscalation(note) {
+  var btn = document.getElementById('ackDirectorBtn_' + note.id);
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+
+  var { error } = await sb.from(TABLE).update({
+    director_escalated_ack: true, director_escalated_ack_by: currentReviewer.name,
+    director_escalated_ack_date: new Date().toISOString()
+  }).eq('id', note.id);
+
+  if (error) {
+    alert('Could not acknowledge: ' + error.message);
+    if (btn) { btn.disabled = false; btn.textContent = 'Acknowledge'; }
+    return;
+  }
+  await loadAndRenderDashboard();
+}
+
+// ── ESCALATE TO CLINICAL: sets the `escalated` field, which is what feeds
+// the Clinical Director Hub's Escalated Charts queue. Keep this field name
+// exactly as-is -- the Hub reads it directly.
+async function escalateToClinical(note) {
+  var btn = document.getElementById('escalateClinicalBtn_' + note.id);
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+
+  var { error } = await sb.from(TABLE).update({
+    escalated: true, escalated_by: currentReviewer.name,
+    escalated_date: new Date().toISOString()
+  }).eq('id', note.id);
+
+  if (error) {
+    alert('Could not escalate to clinical: ' + error.message);
+    if (btn) { btn.disabled = false; btn.textContent = 'Escalate to Clinical'; }
+    return;
+  }
+
+  await loadAndRenderDashboard();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// COMPLIANCE GRADING ENGINE
+// Scores every note -- not just self-flagged or AI-safety-flagged
+// ones -- against the UM/documentation framework standards. This is
+// what closes the gap where a note with poor documentation but no
+// safety concern would otherwise never surface to anyone. Runs in
+// batches of 15 on a button click, not automatically/silently, so
+// leadership can watch it work and control the pace/cost.
+// ══════════════════════════════════════════════════════════════════
+
+var COMPLIANCE_RUBRIC = 'You are grading Peer Recovery Supporter (PRS) DAP progress notes for a CARF-accredited peer support agency against five documentation standards used by the agency\'s Utilization Review Committee:\n\n'
+  + '1. INDIVIDUALIZATION: Is the note specific to this Peer and this session, or could it be swapped into another client\'s chart unchanged?\n'
+  + '2. CLINICAL/PROGRESS RATIONALE: Does the Assessment section tie to a specific goal and describe measurable progress, setback, or status -- not just generic strengths language?\n'
+  + '3. SCOPE OF PRACTICE: Does the note stay within peer support scope (lived experience, mutuality, self-determination) rather than describing clinical/case-management activity (assessing symptoms, delivering therapy, diagnosing)?\n'
+  + '4. PROGRESS ORIENTATION: Does the note reflect where the Peer stands relative to their goals, not just what happened in the room?\n'
+  + '5. FORWARD PLAN: Is there a concrete, specific next step (not "continue services" or similarly vague filler)?\n\n'
+  + 'You will receive a JSON array of notes, each with an "id" and its "description", "assessment", and "plan" text. For EACH note, return a grade:\n'
+  + '- "Compliant": meets all five standards adequately\n'
+  + '- "Needs Improvement": meets most standards but has 1-2 clear gaps\n'
+  + '- "Non-Compliant": missing multiple standards, or is too generic/templated to be individualized, or strays outside PRS scope of practice\n\n'
+  + 'Return ONLY a JSON array, no other text, in this exact shape: [{"id": "<the id you were given>", "grade": "Compliant" | "Needs Improvement" | "Non-Compliant", "score": <0-100 integer>, "issues": [<short strings, each naming ONE specific gap you found -- omit this key or use an empty array if Compliant>]}]. Be specific in "issues" -- e.g. "Assessment restates status generically instead of naming a measurable action" rather than "needs more detail."';
+
+async function gradeNextBatch() {
+  // Grading spends org money across the whole table, not just one
+  // division's notes -- the button itself is hidden for non-org_wide
+  // reviewers, but guard the action too in case it's ever called directly.
+  if (!currentReviewer || currentReviewer.role !== 'org_wide') return;
+
+  var btn = document.getElementById('gradeBatchBtn');
+  var statusEl = document.getElementById('gradeBatchStatus');
+  if (btn) { btn.disabled = true; btn.textContent = 'Grading…'; }
+  if (statusEl) statusEl.textContent = 'Fetching next batch of ungraded notes…';
+
+  var { data: batch, error: fetchErr } = await sb
+    .from(TABLE)
+    .select('id, description_text, assessment_text, plan_text')
+    .is('compliance_graded_at', null)
+    .order('session_date', { ascending: true })
+    .limit(15);
+
+  if (fetchErr) {
+    if (statusEl) statusEl.textContent = 'Error fetching batch: ' + fetchErr.message;
+    if (btn) { btn.disabled = false; btn.textContent = 'Grade Next Batch'; }
+    return;
+  }
+
+  if (!batch || !batch.length) {
+    if (statusEl) statusEl.textContent = 'No ungraded notes remaining.';
+    if (btn) { btn.disabled = false; btn.textContent = 'Grade Next Batch'; }
+    return;
+  }
+
+  // Notes with no saved text can't be meaningfully graded by content --
+  // but blank documentation is itself a compliance issue, so mark them
+  // Non-Compliant directly rather than sending them to the API or
+  // leaving them stuck ungraded forever.
+  var blank = batch.filter(function(n) { return !n.description_text && !n.assessment_text && !n.plan_text; });
+  var gradable = batch.filter(function(n) { return n.description_text || n.assessment_text || n.plan_text; });
+
+  var now = new Date().toISOString();
+  for (var i = 0; i < blank.length; i++) {
+    await sb.from(TABLE).update({
+      compliance_grade: 'Non-Compliant', compliance_score: 0,
+      compliance_issues: ['No note text was saved for this entry'],
+      compliance_graded_at: now
+    }).eq('id', blank[i].id);
+  }
+
+  if (!gradable.length) {
+    if (statusEl) statusEl.textContent = 'Graded ' + blank.length + ' note(s) with no saved text as Non-Compliant. Click again for the next batch.';
+    if (btn) { btn.disabled = false; btn.textContent = 'Grade Next Batch'; }
+    await loadAndRenderDashboard();
+    return;
+  }
+
+  if (statusEl) statusEl.textContent = 'Grading ' + gradable.length + ' note(s) against the UM framework…';
+
+  var payload = gradable.map(function(n) {
+    return { id: n.id, description: n.description_text || '', assessment: n.assessment_text || '', plan: n.plan_text || '' };
+  });
+
+  try {
+    var response = await fetch('/functions/claude', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ system: COMPLIANCE_RUBRIC, messages: [{ role: 'user', content: JSON.stringify(payload) }] })
+    });
+    var data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'API error');
+
+    var text = (data.content && data.content[0] && data.content[0].text) ? data.content[0].text : '';
+    var cleaned = text.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
+    var results = JSON.parse(cleaned);
+
+    var counts = { 'Compliant': 0, 'Needs Improvement': 0, 'Non-Compliant': 0 };
+    for (var j = 0; j < results.length; j++) {
+      var r = results[j];
+      if (!r.id || !r.grade) continue;
+      counts[r.grade] = (counts[r.grade] || 0) + 1;
+      await sb.from(TABLE).update({
+        compliance_grade: r.grade,
+        compliance_score: (typeof r.score === 'number') ? r.score : null,
+        compliance_issues: r.issues || [],
+        compliance_graded_at: now
+      }).eq('id', r.id);
+    }
+
+    if (statusEl) {
+      statusEl.textContent = 'Graded ' + results.length + ' note(s): ' + counts['Compliant'] + ' compliant, '
+        + counts['Needs Improvement'] + ' needs improvement, ' + counts['Non-Compliant'] + ' non-compliant.'
+        + (blank.length ? (' Plus ' + blank.length + ' with no saved text, marked Non-Compliant.') : '')
+        + ' Click again for the next batch.';
+    }
+  } catch (e) {
+    if (statusEl) statusEl.textContent = 'Grading failed: ' + e.message + '. The blank-text notes above were still graded. Try again.';
+    console.warn('[Compliance grading] failed', e);
+  }
+
+  if (btn) { btn.disabled = false; btn.textContent = 'Grade Next Batch'; }
+  await loadAndRenderDashboard();
+}
+
+function emailProvider(note) {
+  var msgEl = document.getElementById('emailMsg_' + note.id);
+  var msg = msgEl ? msgEl.value.trim() : '';
+  var subject = 'Follow-up needed: ' + (note.client_number || 'note') + ' (' + (note.program || '') + ')';
+  var flagType = note.concern_flagged ? 'a concern flag' : 'an ITP flag';
+  var dateStr = note.session_date ? new Date(note.session_date + 'T00:00:00').toLocaleDateString() : 'an unspecified date';
+  var reasonLine = note._rejectReason ? ('This note was reviewed and needs revision. Reason: ' + note._rejectReason + '\n\n') : '';
+
+  var noteTextBlock = '';
+  if (note.description_text || note.assessment_text || note.plan_text) {
+    noteTextBlock = '--- NOTE TEXT (for reference) ---\n\n'
+      + 'Description:\n' + (note.description_text || '(not saved)') + '\n\n'
+      + 'Assessment:\n' + (note.assessment_text || '(not saved)') + '\n\n'
+      + 'Plan:\n' + (note.plan_text || '(not saved)') + '\n\n'
+      + '--- END NOTE TEXT ---\n\n';
+  }
+
+  var body = 'Hi,\n\n'
+    + 'I was reviewing the flagged notes tracker and wanted to follow up on the note for client ' + (note.client_number || '(no client number)')
+    + ' in ' + (note.program || 'your program') + ', session date ' + dateStr + ', which has ' + flagType + '.\n\n'
+    + reasonLine + (msg ? (msg + '\n\n') : '')
+    + noteTextBlock
+    + 'Could you take another look at this note in Pimsy when you get a chance?\n\n'
+    + 'Thanks,\n' + (currentReviewer ? currentReviewer.name : '');
+  var mailto = 'mailto:' + encodeURIComponent(note.provider_email)
+    + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+  window.location.href = mailto;
+}
+
+function renderNoteCard(note) {
+  var hasAnyFlag = noteHasAnyFlag(note);
+  var cardClass = 'note-card' + (note.reviewed ? ' reviewed' : (hasAnyFlag ? ((note.concern_flagged || note.ai_concern_flagged) ? ' concern' : ' itp') : ''));
+  var badges = '';
+  if (note.concern_flagged) badges += '<span class="badge badge-concern">Concern (self-reported)</span>';
+  if (note.itp_flagged) badges += '<span class="badge badge-itp">ITP</span>';
+  // AI safety-net flag: caught in the narrative text independent of whatever
+  // the PRS toggled. When this is true but concern_flagged is false, that's
+  // the exact case worth leadership's attention -- a risk the PRS didn't
+  // self-report but that showed up in the writing.
+  if (note.ai_concern_flagged && !note.concern_flagged) {
+    badges += '<span class="badge badge-concern">&#9888; AI-detected risk (not self-reported)</span>';
+  } else if (note.ai_concern_flagged) {
+    badges += '<span class="badge badge-concern">AI-confirmed</span>';
+  }
+  if (note.other_flags && note.other_flags.length) {
+    note.other_flags.forEach(function(f){ badges += '<span class="badge badge-other">' + escapeHtml(f) + '</span>'; });
+  }
+  if (note.director_escalated) badges += '<span class="badge badge-director-escalated">Escalated to Director</span>';
+  if (note.escalated) badges += '<span class="badge badge-escalated">Escalated to Clinical</span>';
+  if (note.compliance_grade === 'Non-Compliant') badges += '<span class="badge badge-concern">Non-Compliant</span>';
+  else if (note.compliance_grade === 'Needs Improvement') badges += '<span class="badge badge-itp">Needs Improvement</span>';
+  else if (note.compliance_grade === 'Compliant') badges += '<span class="badge badge-reviewed">Compliant</span>';
+  if (note.reviewed && note.review_outcome === 'approved') badges += '<span class="badge badge-reviewed">Approved</span>';
+  if (note.reviewed && note.review_outcome === 'rejected') badges += '<span class="badge badge-rejected">Rejected</span>';
+  if (!badges) badges = '<span class="badge badge-other">No flags — routine note</span>';
+
+  var complianceIssuesHtml = '';
+  if (note.compliance_issues && note.compliance_issues.length) {
+    complianceIssuesHtml = '<div class="concern-types">' + note.compliance_issues.map(function(t){ return '<span>' + escapeHtml(t) + '</span>'; }).join('') + '</div>';
+  }
+
+  var concernTypesHtml = '';
+  if (note.concern_type && note.concern_type.length) {
+    concernTypesHtml = '<div class="concern-types">' + note.concern_type.map(function(t){ return '<span>' + escapeHtml(t) + '</span>'; }).join('') + '</div>';
+  }
+
+  var dateStr = note.session_date ? new Date(note.session_date + 'T00:00:00').toLocaleDateString() : '—';
+  var codeLabel = note.linkage_code ? (' <span class="divider">&middot;</span> ' + escapeHtml(note.linkage_code)) : '';
+  var providerLine = note.provider_email ? ('PRS: ' + escapeHtml(note.provider_email) + '<br/>') : '';
+
+  var reasonHtml = (note.review_outcome === 'rejected' && note.reject_reason)
+    ? '<div class="reject-reason-box">Reject reason: ' + escapeHtml(note.reject_reason) + '</div>' : '';
+  var directorEscalatedHtml = note.director_escalated
+    ? '<div class="escalated-tag director">Escalated to Director' + (note.director_escalated_to ? (' (' + escapeHtml(note.director_escalated_to) + ')') : '') + ' by ' + escapeHtml(note.director_escalated_by || '—') + (note.director_escalated_date ? (' on ' + new Date(note.director_escalated_date).toLocaleDateString()) : '') + '</div>'
+    : '';
+  var directorAckHtml = '';
+  if (note.director_escalated) {
+    directorAckHtml = note.director_escalated_ack
+      ? '<div class="resolved-tag" style="color:var(--thrive-blue);">Acknowledged by ' + escapeHtml(note.director_escalated_ack_by || '—') + (note.director_escalated_ack_date ? (' on ' + new Date(note.director_escalated_ack_date).toLocaleDateString()) : '') + '</div>'
+      : '<button class="ack-btn" id="ackDirectorBtn_' + note.id + '" style="margin-top:6px;width:100%;">Acknowledge</button>';
+  }
+  var escalatedNoteHtml = note.escalated
+    ? '<div class="escalated-tag">Sent to Clinical Director Hub by ' + escapeHtml(note.escalated_by || '—') + (note.escalated_date ? (' on ' + new Date(note.escalated_date).toLocaleDateString()) : '') + '</div>'
+      + (note.resolved
+          ? '<div class="resolved-tag">Resolved in Clinical Director Hub by ' + escapeHtml(note.resolved_by || '—') + (note.resolved_date ? (' on ' + new Date(note.resolved_date).toLocaleDateString()) : '') + (note.resolution_notes ? ('<br/><span style="color:var(--ink-soft);font-weight:400;">' + escapeHtml(note.resolution_notes) + '</span>') : '') + '</div>'
+          : '<div class="escalated-tag" style="color:var(--muted);font-weight:500;">Awaiting review in Clinical Director Hub</div>')
+    : '';
+
+  var actionsHtml;
+  if (note.reviewed) {
+    actionsHtml = '<div class="reviewed-note">' + (note.review_outcome === 'rejected' ? 'Rejected' : 'Approved') + ' by ' + escapeHtml(note.reviewed_by || '—')
+      + '<br/>' + (note.reviewed_date ? new Date(note.reviewed_date).toLocaleString() : '') + '</div>' + reasonHtml + directorEscalatedHtml + directorAckHtml;
+  } else {
+    actionsHtml = '<div class="action-row">'
+      + '<button class="action-btn approve" id="approveBtn_' + note.id + '">Approve</button>'
+      + '<button class="action-btn reject" id="rejectBtn_' + note.id + '">Reject</button>'
+      + (note.director_escalated ? '' : '<button class="action-btn escalate" id="escalateDirectorBtn_' + note.id + '">Escalate to Director</button>')
+      + (note.escalated ? '' : '<button class="action-btn escalate" id="escalateClinicalBtn_' + note.id + '">Escalate to Clinical</button>')
+      + '</div>' + directorEscalatedHtml + directorAckHtml + escalatedNoteHtml;
+  }
+
+  var hasNoteText = note.description_text || note.assessment_text || note.plan_text;
+  var partialSections = hasNoteText && (!note.description_text || !note.assessment_text || !note.plan_text);
+  var missingParts = [];
+  if (partialSections) {
+    if (!note.description_text) missingParts.push('Description');
+    if (!note.assessment_text) missingParts.push('Assessment');
+    if (!note.plan_text) missingParts.push('Plan');
+  }
+  var partialWarningHtml = partialSections
+    ? '<p class="partial-note-text">Note: ' + missingParts.join(' and ') + ' section' + (missingParts.length > 1 ? 's' : '') + ' did not save with this entry — review the source note in Pimsy for the full text.</p>'
+    : '';
+  var noteContentHtml = hasNoteText ? `
+    ${partialWarningHtml}
+    <div class="field-block">
+      <div class="eyebrow">Description of Session</div>
+      <p>${escapeHtml(note.description_text || '—')}</p>
+    </div>
+    <div class="field-block">
+      <div class="eyebrow">Assessment of Progress</div>
+      <p>${escapeHtml(note.assessment_text || '—')}</p>
+    </div>
+    <div class="field-block">
+      <div class="eyebrow">Plans for Follow-Up</div>
+      <p>${escapeHtml(note.plan_text || '—')}</p>
+    </div>
+  ` : '<p class="no-note-text">No note text was generated or saved for this entry — this usually means the note generator did not produce recognizable output. Review the source note in Pimsy directly.</p>';
+
+  var emailBlockHtml = note.provider_email ? `
+    <div class="email-block">
+      <label>Message to Provider (Optional)</label>
+      <textarea id="emailMsg_${note.id}" placeholder="e.g. Can you take another look at the Assessment section on this one?"></textarea>
+      <button class="email-btn" id="emailBtn_${note.id}">Email Provider</button>
+      <div class="email-hint">Opens your email client addressed to the PRS, with the full note text included for reference.</div>
+    </div>
+  ` : '<div class="email-block"><p class="no-email-note">No provider email on file for this note.</p></div>';
+
+  return `
+    <div class="${cardClass}">
+      <div class="note-top">
+        <div class="note-meta">
+          <span class="client">${escapeHtml(note.client_number || 'No client #')}</span>${codeLabel} <span class="divider">&middot;</span> ${escapeHtml(note.program || '—')}<br/>
+          ${providerLine}
+          Session date: ${dateStr}
+          <div class="badge-row">${badges}</div>
+          ${concernTypesHtml}
+          ${complianceIssuesHtml}
+          <button class="collapse-toggle" id="collapseToggle_${note.id}" style="display:block;margin-top:10px;">Show note &amp; provider contact</button>
+        </div>
+        <div class="note-actions">${actionsHtml}</div>
+      </div>
+      <div class="note-content" id="noteContent_${note.id}" style="display:none;">
+        ${noteContentHtml}
+        ${emailBlockHtml}
+      </div>
+    </div>
+  `;
+}
+
+// ── CASELOAD PATTERNS ──
+// Client-level oversight, distinct from the note-level review above. These
+// look ACROSS a client's note history (not any single note) to surface
+// patterns a manager would otherwise only catch by reading every file or
+// waiting for a PRS to raise it. All thresholds below are a starting point,
+// not a clinical standard -- adjust the numbers if they don't match reality.
+
+var STAGE_RANK = { 'Pre-contemplation': 0, 'Contemplation': 1, 'Preparation': 2, 'Action': 3, 'Maintenance': 4 };
+function stageRank(stageText) {
+  if (!stageText) return null;
+  var key = Object.keys(STAGE_RANK).find(function(k){ return stageText.indexOf(k) === 0; });
+  return (key !== undefined) ? STAGE_RANK[key] : null;
+}
+
+function groupNotesByClient(notes) {
+  var byClient = {};
+  notes.forEach(function(n) {
+    if (!n.client_number) return; // can't run client-level analysis without an ID to group on
+    if (!byClient[n.client_number]) byClient[n.client_number] = [];
+    byClient[n.client_number].push(n);
+  });
+  Object.keys(byClient).forEach(function(cn) {
+    byClient[cn].sort(function(a, b){ return new Date(a.session_date || 0) - new Date(b.session_date || 0); });
+  });
+  return byClient;
+}
+
+// Last 3 standard-note sessions all at Maintenance, no setback, no safety concerns.
+function detectGraduationTrend(clientNotes) {
+  var std = clientNotes.filter(function(n){ return n.note_type === 'standard' && n.stage_of_change; });
+  if (std.length < 3) return null;
+  var last3 = std.slice(-3);
+  var allMaintenance = last3.every(function(n){ return (n.stage_of_change || '').indexOf('Maintenance') === 0; });
+  var noSetback = last3.every(function(n){
+    var s = (n.goal_progress_status || '').toLowerCase();
+    return s.indexOf('setback') === -1 && s.indexOf('difficulty') === -1;
+  });
+  var noConcerns = last3.every(function(n){ return !n.concern_flagged && !n.ai_concern_flagged; });
+  if (!(allMaintenance && noSetback && noConcerns)) return null;
+  return {
+    noteIds: last3.map(function(n){ return n.id; }),
+    evidence: last3.map(function(n){ return (n.session_date || '?') + ' \u2014 Maintenance, ' + (n.goal_progress_status || 'no status'); })
+  };
+}
+
+// Stage regressed across the last 3 sessions, OR 2+ setbacks, OR 2+ sessions
+// with a notably negative presentation.
+var NEGATIVE_PRESENTATION = ['Withdrawn', 'Guarded', 'Frustrated', 'Distracted', 'Anxious', 'Tearful'];
+function detectDisengagementTrend(clientNotes) {
+  var std = clientNotes.filter(function(n){ return n.note_type === 'standard'; });
+  if (std.length < 3) return null;
+  var last3 = std.slice(-3);
+  var reasons = [];
+
+  var firstRank = stageRank(last3[0].stage_of_change);
+  var lastRank = stageRank(last3[2].stage_of_change);
+  if (firstRank !== null && lastRank !== null && lastRank < firstRank) {
+    reasons.push('Stage of Change moved backward: ' + last3[0].stage_of_change + ' \u2192 ' + last3[2].stage_of_change);
+  }
+
+  var setbackCount = last3.filter(function(n){
+    var s = (n.goal_progress_status || '').toLowerCase();
+    return s.indexOf('setback') > -1 || s.indexOf('difficulty') > -1;
+  }).length;
+  if (setbackCount >= 2) reasons.push(setbackCount + ' of the last 3 sessions noted a setback or difficulty toward the goal');
+
+  var negativeCount = last3.filter(function(n){
+    var chips = n.presentation || [];
+    return chips.some(function(c){ return NEGATIVE_PRESENTATION.indexOf(c) > -1; });
+  }).length;
+  if (negativeCount >= 2) reasons.push(negativeCount + ' of the last 3 sessions noted a presentation like Withdrawn, Guarded, Frustrated, or Anxious');
+
+  if (reasons.length === 0) return null;
+  return { noteIds: last3.map(function(n){ return n.id; }), evidence: reasons };
+}
+
+// 2+ notes flagged (self-reported or AI-caught) for this client, none escalated.
+function detectRepeatSafetyWithoutEscalation(clientNotes) {
+  var flagged = clientNotes.filter(function(n){ return n.concern_flagged || n.ai_concern_flagged; });
+  if (flagged.length < 2) return null;
+  if (flagged.some(function(n){ return n.escalated; })) return null;
+  return {
+    noteIds: flagged.map(function(n){ return n.id; }),
+    evidence: flagged.map(function(n){ return (n.session_date || '?') + ': ' + (n.concern_flagged ? 'self-reported concern' : 'AI-detected risk, not self-reported'); })
+  };
+}
+
+// 2+ of the last 3 standard notes flagged a need for an ITP update.
+function detectRepeatItpWithoutResolution(clientNotes) {
+  var std = clientNotes.filter(function(n){ return n.note_type === 'standard'; });
+  if (std.length < 2) return null;
+  var last3 = std.slice(-3);
+  var itpNotes = last3.filter(function(n){ return n.itp_flagged; });
+  if (itpNotes.length < 2) return null;
+  return {
+    noteIds: itpNotes.map(function(n){ return n.id; }),
+    evidence: itpNotes.map(function(n){ return (n.session_date || '?') + ': ITP update flagged'; })
+  };
+}
+
+// FIX (BUG-14, 9/4): SLI support-level direction should agree with actual service-hours
+// direction -- a client whose level improved but whose hours haven't come down (or one whose
+// level worsened but whose hours haven't gone up) is worth a manager's eye. This needs FULL
+// SLI assessment history per client (not just the current row), which loadCaseloadPatterns
+// fetches separately and passes in as `sliHistory` -- the second argument every other detector
+// above ignores. Hours are compared using the same two-window approach as the Utilization tab
+// (recent UTILIZATION_WEEKS_BACK weeks vs. the UTILIZATION_WEEKS_BACK weeks before that); a
+// >15% change either direction counts as "moved," anything smaller is "flat" so ordinary
+// week-to-week noise doesn't trigger a false pattern.
+function sliLevelDirection(sliHistory) {
+  if (!sliHistory || sliHistory.length < 2) return null;
+  var sorted = sliHistory.slice().sort(function(a, b){ return new Date(a.assessment_date || 0) - new Date(b.assessment_date || 0); });
+  var prev = sorted[sorted.length - 2];
+  var curr = sorted[sorted.length - 1];
+  if (prev.final_support_level == null || curr.final_support_level == null) return null;
+  if (curr.final_support_level === prev.final_support_level) return null;
+  return {
+    direction: curr.final_support_level < prev.final_support_level ? 'improving' : 'declining',
+    prev: prev,
+    curr: curr
+  };
+}
+
+function computeTwoWindowHours(clientNotes) {
+  var msPerWeek = 1000 * 60 * 60 * 24 * 7;
+  var now = Date.now();
+  var recentStart = now - UTILIZATION_WEEKS_BACK * msPerWeek;
+  var priorStart = now - (UTILIZATION_WEEKS_BACK * 2) * msPerWeek;
+  var recent = 0, prior = 0;
+  clientNotes.forEach(function(n) {
+    if (n.note_type !== 'standard' || !n.session_date) return;
+    var hrs = sessionLengthToHours(n.session_length);
+    if (hrs === null) return;
+    var t = new Date(n.session_date + 'T00:00:00').getTime();
+    if (t >= recentStart) recent += hrs;
+    else if (t >= priorStart) prior += hrs;
+  });
+  return { recent: recent, prior: prior };
+}
+
+function classifyHoursChange(hoursRecent, hoursPrior) {
+  if (hoursPrior === 0) return hoursRecent === 0 ? 'flat' : 'increased';
+  var pct = (hoursRecent - hoursPrior) / hoursPrior;
+  if (pct > 0.15) return 'increased';
+  if (pct < -0.15) return 'decreased';
+  return 'flat';
+}
+
+function recentStandardNoteIds(clientNotes) {
+  var std = clientNotes.filter(function(n){ return n.note_type === 'standard'; });
+  var cutoff = Date.now() - UTILIZATION_WEEKS_BACK * 7 * 24 * 60 * 60 * 1000;
+  var recentIds = std.filter(function(n){
+    return n.session_date && new Date(n.session_date + 'T00:00:00').getTime() >= cutoff;
+  }).map(function(n){ return n.id; });
+  return recentIds.length ? recentIds : std.slice(-1).map(function(n){ return n.id; });
+}
+
+// Improving support level (lower SLI number = less support needed), but service volume
+// hasn't stepped down to match.
+function detectUtilStepDown(clientNotes, sliHistory) {
+  var dir = sliLevelDirection(sliHistory);
+  if (!dir || dir.direction !== 'improving') return null;
+  var hrs = computeTwoWindowHours(clientNotes);
+  var hoursDir = classifyHoursChange(hrs.recent, hrs.prior);
+  if (hoursDir === 'decreased') return null; // already stepped down -- nothing to flag
+  return {
+    noteIds: recentStandardNoteIds(clientNotes),
+    evidence: [
+      'SLI support level improved: Level ' + dir.prev.final_support_level + ' (' + (dir.prev.assessment_date || '?') + ') → Level ' + dir.curr.final_support_level + ' (' + (dir.curr.assessment_date || '?') + ')',
+      'Service hours, last ' + UTILIZATION_WEEKS_BACK + ' wks vs. prior ' + UTILIZATION_WEEKS_BACK + ' wks: ' + hrs.recent.toFixed(1) + ' vs. ' + hrs.prior.toFixed(1) + ' hrs (' + hoursDir + ') — hasn’t stepped down with the improved level'
+    ]
+  };
+}
+
+// Declining support level (higher SLI number = more support needed), but service volume
+// hasn't stepped up to match.
+function detectUtilStepUp(clientNotes, sliHistory) {
+  var dir = sliLevelDirection(sliHistory);
+  if (!dir || dir.direction !== 'declining') return null;
+  var hrs = computeTwoWindowHours(clientNotes);
+  var hoursDir = classifyHoursChange(hrs.recent, hrs.prior);
+  if (hoursDir === 'increased') return null; // already stepped up -- nothing to flag
+  return {
+    noteIds: recentStandardNoteIds(clientNotes),
+    evidence: [
+      'SLI support level declined: Level ' + dir.prev.final_support_level + ' (' + (dir.prev.assessment_date || '?') + ') → Level ' + dir.curr.final_support_level + ' (' + (dir.curr.assessment_date || '?') + ')',
+      'Service hours, last ' + UTILIZATION_WEEKS_BACK + ' wks vs. prior ' + UTILIZATION_WEEKS_BACK + ' wks: ' + hrs.recent.toFixed(1) + ' vs. ' + hrs.prior.toFixed(1) + ' hrs (' + hoursDir + ') — hasn’t stepped up with the declining level'
+    ]
+  };
+}
+
+var PATTERN_DETECTORS = [
+  { type: 'graduation', label: 'Graduation Trending', fn: detectGraduationTrend },
+  { type: 'disengagement', label: 'Disengagement Trending', fn: detectDisengagementTrend },
+  { type: 'repeat_safety', label: 'Repeat Safety Flag, Not Escalated', fn: detectRepeatSafetyWithoutEscalation },
+  { type: 'repeat_itp', label: 'Repeat ITP Flag, Not Resolved', fn: detectRepeatItpWithoutResolution },
+  { type: 'util_step_down', label: 'Improving, Service Volume Hasn’t Stepped Down', fn: detectUtilStepDown },
+  { type: 'util_step_up', label: 'Declining, Service Volume Hasn’t Stepped Up', fn: detectUtilStepUp }
+];
+
+async function loadCaseloadPatterns() {
+  var container = document.getElementById('patternsMode');
+  container.innerHTML = '<div class="loading-state">Loading caseload patterns&hellip;</div>';
+
+  var patternsQuery = scopeNotesQuery(sb.from(TABLE).select('*').order('session_date', { ascending: true }));
+  if (!patternsQuery) {
+    renderCaseloadPatterns([], 0);
+    return;
+  }
+  var { data: notes, error: notesErr } = await patternsQuery;
+  if (notesErr) {
+    container.innerHTML = '<div class="empty-state"><p>Error loading notes: ' + escapeHtml(notesErr.message) + '</p></div>';
+    return;
+  }
+  notes = notes || [];
+
+  var { data: acks, error: acksErr } = await sb.from('client_pattern_acks').select('*');
+  if (acksErr) {
+    console.warn('[Caseload Patterns] Could not load acknowledgments (patterns will still show, just without ack state): ' + acksErr.message);
+  }
+  acks = acks || [];
+
+  var withoutClientNumber = notes.filter(function(n){ return !n.client_number; }).length;
+  var byClient = groupNotesByClient(notes);
+
+  // FIX (BUG-14, 9/4): the util_step_down/util_step_up detectors need each client's FULL SLI
+  // assessment history (to compare the last two levels), not just the current one -- fetch it
+  // separately and scope it to clients already present in this reviewer's (already-scoped)
+  // notes, the same trick loadLeadershipDashboard uses since sli_assessments has no
+  // provider/roster link of its own.
+  var sliHistoryByClient = {};
+  var sliHistRes = await sb.from(SLI_TABLE).select('client_number, final_support_level, assessment_date').order('assessment_date', { ascending: true });
+  if (!sliHistRes.error) {
+    (sliHistRes.data || []).forEach(function(r) {
+      if (!r.client_number || !byClient[r.client_number]) return;
+      if (!sliHistoryByClient[r.client_number]) sliHistoryByClient[r.client_number] = [];
+      sliHistoryByClient[r.client_number].push(r);
+    });
+  }
+
+  var results = [];
+  Object.keys(byClient).forEach(function(cn) {
+    var clientNotes = byClient[cn];
+    var program = clientNotes[clientNotes.length - 1].program;
+    PATTERN_DETECTORS.forEach(function(d) {
+      var res = d.fn(clientNotes, sliHistoryByClient[cn] || []);
+      if (!res) return;
+      var sortedIds = res.noteIds.slice().sort().join(',');
+      var isAcked = acks.some(function(a){
+        return a.client_number === cn && a.pattern_type === d.type &&
+          (a.contributing_note_ids || []).slice().sort().join(',') === sortedIds;
+      });
+      if (isAcked) return;
+      results.push({ client_number: cn, program: program, pattern_type: d.type, label: d.label, evidence: res.evidence, noteIds: res.noteIds });
+    });
+  });
+
+  renderCaseloadPatterns(results, withoutClientNumber);
+}
+
+function renderCaseloadPatterns(results, withoutClientNumber) {
+  var container = document.getElementById('patternsMode');
+  var countNote = withoutClientNumber > 0
+    ? ('<div class="pattern-count-note">' + withoutClientNumber + ' note(s) had no client number on file and could not be included in this analysis.</div>')
+    : '';
+
+  if (results.length === 0) {
+    container.innerHTML = `
+      <div class="pattern-intro">
+        <strong>Caseload Patterns</strong> looks across each client's full note history (not just flagged notes) to surface trends a manager would otherwise only catch by reading every file. Thresholds are a starting point &mdash; tell me if they don't match clinical reality and I'll adjust them.
+      </div>
+      ${countNote}
+      <div class="empty-state"><p>No patterns detected in your scope right now.</p></div>
+    `;
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="pattern-intro">
+      <strong>Caseload Patterns</strong> looks across each client's full note history (not just flagged notes) to surface trends a manager would otherwise only catch by reading every file. Thresholds are a starting point &mdash; tell me if they don't match clinical reality and I'll adjust them.
+    </div>
+    ${countNote}
+    ${results.map(renderPatternCard).join('')}
+  `;
+
+  results.forEach(function(r){
+    var btn = document.getElementById('ackBtn_' + r.pattern_type + '_' + r.client_number);
+    if (btn) btn.onclick = function(){ acknowledgePattern(r, btn); };
+  });
+}
+
+function renderPatternCard(r) {
+  var evidenceHtml = '<ul>' + r.evidence.map(function(e){ return '<li>' + escapeHtml(e) + '</li>'; }).join('') + '</ul>';
+  var safeId = 'ackBtn_' + r.pattern_type + '_' + r.client_number;
+  return `
+    <div class="pattern-card ${r.pattern_type}">
+      <div class="pattern-top">
+        <div class="pattern-meta">
+          <span class="client">${escapeHtml(r.client_number)}</span> <span class="divider">&middot;</span> ${escapeHtml(r.program || '—')}
+          <div><span class="pattern-label ${r.pattern_type}">${escapeHtml(r.label)}</span></div>
+          <div class="pattern-evidence">${evidenceHtml}</div>
+        </div>
+        <button class="ack-btn" id="${safeId}">Acknowledge</button>
+      </div>
+    </div>
+  `;
+}
+
+async function acknowledgePattern(r, btn) {
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+  var { error } = await sb.from('client_pattern_acks').insert({
+    client_number: r.client_number,
+    pattern_type: r.pattern_type,
+    contributing_note_ids: r.noteIds,
+    acknowledged_by: currentReviewer.name
+  });
+  if (error) {
+    alert('Could not acknowledge: ' + error.message);
+    btn.disabled = false;
+    btn.textContent = 'Acknowledge';
+    return;
+  }
+  await loadCaseloadPatterns();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// LEADERSHIP DASHBOARD
+// Rolls up documentation compliance, safety-flag trends, and
+// escalation resolution time across the whole org (or the reviewer's
+// scope). Unlike Note Review, this pulls ALL notes -- not just
+// flagged ones -- because rates need a denominator: "12 flags out of
+// 400 notes" means something different from "12 flags out of 40."
+// ══════════════════════════════════════════════════════════════════
+
+var LEADERSHIP_MONTHS_BACK = 9;
+var UTILIZATION_WEEKS_BACK = 8;
+var SLI_TABLE = 'sli_assessments';
+
+async function loadLeadershipDashboard() {
+  var container = document.getElementById('leadershipMode');
+  container.innerHTML = '<div class="loading-state">Loading leadership dashboard&hellip;</div>';
+
+  var since = new Date();
+  since.setMonth(since.getMonth() - LEADERSHIP_MONTHS_BACK);
+  var sinceStr = since.toISOString().slice(0, 10);
+
+  var utilSince = new Date();
+  utilSince.setDate(utilSince.getDate() - (UTILIZATION_WEEKS_BACK * 7));
+  var utilSinceStr = utilSince.toISOString().slice(0, 10);
+
+  var leadershipNotesQuery = scopeNotesQuery(sb
+    .from(TABLE)
+    .select('id, client_number, session_date, provider_email, program, note_type, session_length, concern_flagged, itp_flagged, ai_concern_flagged, escalated, escalated_date, resolved, resolved_date, compliance_grade')
+    .gte('session_date', sinceStr)
+    .order('session_date', { ascending: true }));
+
+  if (!leadershipNotesQuery) {
+    renderLeadershipDashboard([], [], utilSinceStr);
+    return;
+  }
+
+  var notesRes = await leadershipNotesQuery;
+
+  if (notesRes.error) {
+    container.innerHTML = '<div class="empty-state"><p>Error loading leadership data: ' + escapeHtml(notesRes.error.message) + '</p></div>';
+    return;
+  }
+
+  // SLI table may not exist yet in every environment -- degrade gracefully
+  // rather than blocking the whole dashboard if the utilization piece isn't set up.
+  var sliRows = [];
+  var sliRes = await sb.from(SLI_TABLE).select('client_number, final_support_level, assessment_date, is_current').eq('is_current', true);
+  if (!sliRes.error) sliRows = sliRes.data || [];
+
+  // FIX (BUG-14, 9/4): the "SLI Trend" column needs each client's full assessment history
+  // (last two levels), not just the current one -- a separate query from the is_current-only
+  // one above, which the rest of the Utilization tab still relies on.
+  var sliHistoryRows = [];
+  var sliHistRes = await sb.from(SLI_TABLE).select('client_number, final_support_level, assessment_date').order('assessment_date', { ascending: true });
+  if (!sliHistRes.error) sliHistoryRows = sliHistRes.data || [];
+
+  // Scope SLI rows to clients that actually appear in this reviewer's notes,
+  // so a division director's Utilization tab doesn't leak other divisions'
+  // client-level SLI data (the SLI table itself has no provider/roster link).
+  var scopeEmails = scopedProviderEmails();
+  if (scopeEmails !== null) {
+    var scopedClients = {};
+    (notesRes.data || []).forEach(function(n){ if (n.client_number) scopedClients[n.client_number] = true; });
+    sliRows = sliRows.filter(function(r){ return scopedClients[r.client_number]; });
+    sliHistoryRows = sliHistoryRows.filter(function(r){ return scopedClients[r.client_number]; });
+  }
+
+  var sliHistoryByClient = {};
+  sliHistoryRows.forEach(function(r) {
+    if (!r.client_number) return;
+    if (!sliHistoryByClient[r.client_number]) sliHistoryByClient[r.client_number] = [];
+    sliHistoryByClient[r.client_number].push(r);
+  });
+
+  renderLeadershipDashboard(notesRes.data || [], sliRows, utilSinceStr, sliHistoryByClient);
+}
+
+function monthKey(dateStr) {
+  if (!dateStr) return null;
+  var d = new Date(dateStr + 'T00:00:00');
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+
+function monthLabel(key) {
+  var parts = key.split('-');
+  var d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, 1);
+  return d.toLocaleDateString(undefined, { month: 'short', year: '2-digit' });
+}
+
+function computeMonthlyTrend(notes) {
+  var byMonth = {};
+  notes.forEach(function(n) {
+    var k = monthKey(n.session_date);
+    if (!k) return;
+    if (!byMonth[k]) byMonth[k] = { total: 0, concern: 0, aiOnly: 0, itp: 0 };
+    byMonth[k].total++;
+    if (n.concern_flagged) byMonth[k].concern++;
+    if (n.ai_concern_flagged && !n.concern_flagged) byMonth[k].aiOnly++;
+    if (n.itp_flagged) byMonth[k].itp++;
+  });
+  return Object.keys(byMonth).sort().map(function(k) {
+    return Object.assign({ key: k }, byMonth[k]);
+  });
+}
+
+function computeProviderScorecard(notes) {
+  var byProvider = {};
+  notes.forEach(function(n) {
+    var key = n.provider_email || '(no provider email on file)';
+    if (!byProvider[key]) byProvider[key] = { total: 0, anyFlag: 0, aiOnly: 0, escalated: 0, unresolvedEsc: 0 };
+    var p = byProvider[key];
+    p.total++;
+    if (n.concern_flagged || n.itp_flagged || n.ai_concern_flagged) p.anyFlag++;
+    if (n.ai_concern_flagged && !n.concern_flagged) p.aiOnly++;
+    if (n.escalated) p.escalated++;
+    if (n.escalated && !n.resolved) p.unresolvedEsc++;
+  });
+  return Object.keys(byProvider).map(function(k) {
+    var p = byProvider[k];
+    return Object.assign({ provider: k, flagRate: p.total ? (p.anyFlag / p.total) : 0 }, p);
+  }).sort(function(a, b) { return b.flagRate - a.flagRate; });
+}
+
+function computeEscalationStats(notes) {
+  var escalated = notes.filter(function(n) { return n.escalated; });
+  var resolved = escalated.filter(function(n) { return n.resolved && n.escalated_date && n.resolved_date; });
+  var open = escalated.filter(function(n) { return !n.resolved; });
+
+  var resolutionDays = resolved.map(function(n) {
+    var ms = new Date(n.resolved_date) - new Date(n.escalated_date);
+    return ms / (1000 * 60 * 60 * 24);
+  });
+  var avgResolutionDays = resolutionDays.length ? (resolutionDays.reduce(function(a, b) { return a + b; }, 0) / resolutionDays.length) : null;
+
+  var openAging = open.map(function(n) {
+    var days = n.escalated_date ? (Date.now() - new Date(n.escalated_date)) / (1000 * 60 * 60 * 24) : null;
+    return { id: n.id, program: n.program, escalated_date: n.escalated_date, daysOpen: days };
+  }).sort(function(a, b) { return (b.daysOpen || 0) - (a.daysOpen || 0); });
+
+  return { totalEscalated: escalated.length, totalResolved: resolved.length, totalOpen: open.length, avgResolutionDays: avgResolutionDays, openAging: openAging };
+}
+
+function computeComplianceRollup(notes) {
+  var graded = notes.filter(function(n) { return n.compliance_grade; });
+  if (!graded.length) return null;
+  var byProgram = {};
+  graded.forEach(function(n) {
+    var key = n.program || '(no program)';
+    if (!byProgram[key]) byProgram[key] = { total: 0, compliant: 0, needsImprovement: 0, nonCompliant: 0 };
+    byProgram[key].total++;
+    if (n.compliance_grade === 'Compliant') byProgram[key].compliant++;
+    else if (n.compliance_grade === 'Needs Improvement') byProgram[key].needsImprovement++;
+    else if (n.compliance_grade === 'Non-Compliant') byProgram[key].nonCompliant++;
+  });
+  return { gradedCount: graded.length, totalCount: notes.length, byProgram: byProgram };
+}
+
+function renderMonthlyTrendHtml(trend) {
+  if (!trend.length) return '<p class="empty-state"><p>No sessions in this window.</p></p>';
+  var maxTotal = Math.max.apply(null, trend.map(function(m) { return m.total; }));
+  var rows = trend.map(function(m) {
+    var w = function(count) { return maxTotal ? Math.max((count / maxTotal) * 100, count > 0 ? 2 : 0) : 0; };
+    return `
+      <div class="month-row">
+        <div class="month-label">${escapeHtml(monthLabel(m.key))}</div>
+        <div class="month-bars">
+          <div class="month-bar-seg bar-fill bad" style="width:${w(m.concern)}%" title="${m.concern} concern-flagged"></div>
+          <div class="month-bar-seg bar-fill warn" style="width:${w(m.aiOnly)}%" title="${m.aiOnly} AI-caught, not self-reported"></div>
+          <div class="month-bar-seg bar-fill ok" style="width:${w(m.itp)}%" title="${m.itp} ITP-flagged"></div>
+        </div>
+        <div class="month-count">${m.total} notes &middot; ${m.concern + m.aiOnly + m.itp} flags</div>
+      </div>
+    `;
+  }).join('');
+  return `
+    <div class="legend-row">
+      <div class="legend-item"><div class="legend-swatch" style="background:var(--bad)"></div>Concern-flagged</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:var(--warn)"></div>AI-caught, not self-reported</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:var(--good)"></div>ITP-flagged</div>
+    </div>
+    ${rows}
+  `;
+}
+
+function renderProviderScorecardHtml(scorecard) {
+  if (!scorecard.length) return '<p class="empty-state"><p>No notes in this window.</p></p>';
+  var rows = scorecard.map(function(p) {
+    var isHighRisk = p.total >= 5 && p.flagRate >= 0.25;
+    return `
+      <tr class="${isHighRisk ? 'high-risk' : ''}">
+        <td>${escapeHtml(p.provider)}</td>
+        <td class="num">${p.total}</td>
+        <td class="num">${p.anyFlag}</td>
+        <td class="num">${(p.flagRate * 100).toFixed(0)}%</td>
+        <td class="num">${p.aiOnly}</td>
+        <td class="num">${p.escalated}${p.unresolvedEsc ? (' <span style="color:var(--bad)">(' + p.unresolvedEsc + ' open)</span>') : ''}</td>
+      </tr>
+    `;
+  }).join('');
+  return `
+    <table class="lead-table">
+      <thead><tr>
+        <th>Provider</th><th>Notes</th><th>Flagged</th><th>Flag Rate</th><th>AI-Only</th><th>Escalated</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="lead-section-sub" style="margin-top:10px;">Rows highlighted in red: 5+ notes and a 25%+ flag rate &mdash; a threshold to start a conversation with, not a verdict. Small note counts naturally produce noisy rates.</div>
+  `;
+}
+
+function renderEscalationAgingHtml(stats) {
+  var summary = `
+    <div class="kpi-row" style="grid-template-columns:repeat(3,1fr);margin-bottom:16px;">
+      <div class="kpi"><div class="lbl">Total Escalated</div><div class="val">${stats.totalEscalated}</div></div>
+      <div class="kpi ${stats.totalOpen > 0 ? 'bad' : ''}"><div class="lbl">Still Open</div><div class="val">${stats.totalOpen}</div></div>
+      <div class="kpi"><div class="lbl">Avg. Days to Resolve</div><div class="val">${stats.avgResolutionDays !== null ? stats.avgResolutionDays.toFixed(1) : '—'}</div></div>
+    </div>
+  `;
+  if (!stats.openAging.length) {
+    return summary + '<p class="lead-note">No open escalations right now.</p>';
+  }
+  var items = stats.openAging.map(function(a) {
+    var days = a.daysOpen !== null ? Math.round(a.daysOpen) : null;
+    var isStale = days !== null && days > 7;
+    return `
+      <div class="aging-item">
+        <div>${escapeHtml(a.program || '(no program)')} &middot; escalated ${a.escalated_date ? new Date(a.escalated_date).toLocaleDateString() : '—'}</div>
+        <div class="aging-days ${isStale ? '' : 'ok'}">${days !== null ? (days + 'd open') : '—'}</div>
+      </div>
+    `;
+  }).join('');
+  return summary + `<div class="lead-table" style="padding:0;">${items}</div>`;
+}
+
+function renderComplianceRollupHtml(rollup) {
+  if (!rollup) {
+    return '<p class="lead-note">Compliance grading isn\'t populated in this data yet &mdash; the <code>compliance_grade</code> field is empty on every note in this window. Once the grading pass has been run (or is running automatically on new notes), this section will show Compliant / Needs Improvement / Non-Compliant rates by program.</p>';
+  }
+  var rows = Object.keys(rollup.byProgram).map(function(program) {
+    var p = rollup.byProgram[program];
+    var compliantPct = p.total ? (p.compliant / p.total * 100) : 0;
+    return `
+      <tr>
+        <td>${escapeHtml(program)}</td>
+        <td class="num">${p.total}</td>
+        <td class="num">${p.compliant}</td>
+        <td class="num">${p.needsImprovement}</td>
+        <td class="num">${p.nonCompliant}</td>
+        <td style="min-width:120px;"><div class="bar-track"><div class="bar-fill ${compliantPct >= 80 ? 'ok' : compliantPct >= 60 ? 'warn' : 'bad'}" style="width:${compliantPct}%"></div></div></td>
+      </tr>
+    `;
+  }).join('');
+  return `
+    <div class="lead-section-sub">${rollup.gradedCount} of ${rollup.totalCount} notes in this window have been graded.</div>
+    <table class="lead-table">
+      <thead><tr>
+        <th>Program</th><th>Graded</th><th>Compliant</th><th>Needs Improvement</th><th>Non-Compliant</th><th>Compliant %</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// UTILIZATION vs. SLI SUPPORT LEVEL
+// Compares actual peer support hours delivered against the hours/week
+// target implied by each client's current SLI 2.0 support level.
+// Only note_type='standard' notes count -- BH Linkage (U-code/G-code)
+// contacts are a different service model with their own billing
+// intensity, not part of the SLI hours/week framework.
+// session_length is captured as a range picklist, not a number, so we
+// use the midpoint of each range as a reasonable point estimate.
+// ══════════════════════════════════════════════════════════════════
+
+var SLI_LEVEL_TARGETS = {
+  1: { min: 1, max: 2, label: 'Level 1 (1-2 hrs/wk)' },
+  2: { min: 2, max: 4, label: 'Level 2 (2-4 hrs/wk)' },
+  3: { min: 4, max: 6, label: 'Level 3 (4-6 hrs/wk)' },
+  4: { min: 6, max: 8, label: 'Level 4 (6-8 hrs/wk)' },
+  5: { min: 8, max: 12, label: 'Level 5 (8+ hrs/wk)' }
+};
+
+function sessionLengthToHours(val) {
+  if (!val) return null;
+  var map = {
+    'less than 1 hour': 0.5,
+    '1 to 2 hours': 1.5,
+    '2 to 3 hours': 2.5,
+    '3 to 4 hours': 3.5
+  };
+  return map.hasOwnProperty(val) ? map[val] : null;
+}
+
+function computeUtilization(notes, sliRows, utilSinceStr, sliHistoryByClient) {
+  sliHistoryByClient = sliHistoryByClient || {};
+  var sliByClient = {};
+  sliRows.forEach(function(r) { if (r.client_number) sliByClient[r.client_number] = r; });
+
+  var hoursByClient = {};
+  notes.forEach(function(n) {
+    if (n.note_type !== 'standard') return;
+    if (!n.session_date || n.session_date < utilSinceStr) return;
+    var hrs = sessionLengthToHours(n.session_length);
+    if (hrs === null || !n.client_number) return;
+    hoursByClient[n.client_number] = (hoursByClient[n.client_number] || 0) + hrs;
+  });
+
+  // FIX (BUG-23, 9/4): a client's actual admission date isn't available anywhere this tool can
+  // see (no admission_date field on the notes table, no client roster join). Using each client's
+  // earliest note in the currently-loaded window (LEADERSHIP_MONTHS_BACK, 9 months back) as a
+  // proxy for "on caseload since" — this is exact for a client admitted within that window, and
+  // for anyone whose real admission predates it, the 8-week cap below simply never engages (their
+  // earliest note in-window is >8 weeks back), so this proxy can only ever make the window
+  // *shorter* for someone who's genuinely new to the note history, never wrongly shorten it for a
+  // long-standing client. It also fairly handles a client returning after a long gap — that's the
+  // same "don't judge by a window that mostly predates them" problem, just for a different reason.
+  var earliestByClient = {};
+  notes.forEach(function(n) {
+    if (!n.client_number || !n.session_date) return;
+    if (!earliestByClient[n.client_number] || n.session_date < earliestByClient[n.client_number]) {
+      earliestByClient[n.client_number] = n.session_date;
+    }
+  });
+  var utilSinceDate = new Date(utilSinceStr + 'T00:00:00');
+  function weeksInWindowFor(client) {
+    var earliest = earliestByClient[client];
+    if (!earliest) return UTILIZATION_WEEKS_BACK;
+    var earliestDate = new Date(earliest + 'T00:00:00');
+    if (earliestDate <= utilSinceDate) return UTILIZATION_WEEKS_BACK; // predates the window — full window applies
+    var weeksSince = (Date.now() - earliestDate.getTime()) / (1000 * 60 * 60 * 24 * 7);
+    return Math.max(1, Math.min(UTILIZATION_WEEKS_BACK, weeksSince)); // floor of 1 week avoids a divide-by-near-zero spike on day one
+  }
+
+  var allClientNumbers = {};
+  Object.keys(sliByClient).forEach(function(c) { allClientNumbers[c] = true; });
+  Object.keys(hoursByClient).forEach(function(c) { allClientNumbers[c] = true; });
+
+  var rows = Object.keys(allClientNumbers).map(function(client) {
+    var sli = sliByClient[client];
+    var totalHrs = hoursByClient[client] || 0;
+    var weeksInWindow = weeksInWindowFor(client);
+    var avgWeekly = totalHrs / weeksInWindow;
+    var isRecentAdmit = weeksInWindow < UTILIZATION_WEEKS_BACK;
+    // BUG-14: last-two-assessment direction for the SLI Trend column, reusing the same
+    // helper the Caseload Patterns util_step_down/up detectors use.
+    var trend = sliLevelDirection(sliHistoryByClient[client] || []);
+
+    if (!sli) {
+      return { client: client, hasSli: false, level: null, targetLabel: null, avgWeekly: avgWeekly, status: 'no_sli', isRecentAdmit: isRecentAdmit, weeksInWindow: weeksInWindow, trend: trend };
+    }
+    var target = SLI_LEVEL_TARGETS[sli.final_support_level];
+    if (!target) {
+      return { client: client, hasSli: true, level: sli.final_support_level, targetLabel: '—', avgWeekly: avgWeekly, status: 'no_sli', isRecentAdmit: isRecentAdmit, weeksInWindow: weeksInWindow, trend: trend };
+    }
+    var status;
+    if (avgWeekly === 0) status = 'not_engaged';
+    else if (avgWeekly < target.min) status = 'under';
+    else if (avgWeekly > target.max) status = 'over';
+    else status = 'on_target';
+
+    return { client: client, hasSli: true, level: sli.final_support_level, targetLabel: target.label, targetMin: target.min, targetMax: target.max, avgWeekly: avgWeekly, status: status, isRecentAdmit: isRecentAdmit, weeksInWindow: weeksInWindow, trend: trend };
+  });
+
+  // Most actionable first: not engaged, then under, then over, then on target, then no SLI on file.
+  var statusOrder = { not_engaged: 0, under: 1, over: 2, on_target: 3, no_sli: 4 };
+  rows.sort(function(a, b) {
+    var d = statusOrder[a.status] - statusOrder[b.status];
+    if (d !== 0) return d;
+    return a.client.localeCompare(b.client);
+  });
+
+  return rows;
+}
+
+function renderUtilizationHtml(rows) {
+  if (!rows.length) return '<p class="lead-note">No client activity or SLI assessments found in this window.</p>';
+
+  var STATUS_LABEL = {
+    not_engaged: 'Not Engaged', under: 'Under-Served', over: 'Over-Served',
+    on_target: 'On Target', no_sli: 'No SLI on File'
+  };
+  var STATUS_CLASS = {
+    not_engaged: 'bad', under: 'warn', over: 'warn', on_target: 'ok', no_sli: 'warn'
+  };
+
+  var actionable = rows.filter(function(r) { return r.status !== 'on_target' && r.status !== 'no_sli'; });
+  var noSli = rows.filter(function(r) { return r.status === 'no_sli'; });
+
+  var summary = `
+    <div class="kpi-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px;">
+      <div class="kpi bad"><div class="lbl">Not Engaged</div><div class="val">${rows.filter(function(r){return r.status==='not_engaged';}).length}</div></div>
+      <div class="kpi warn"><div class="lbl">Under-Served</div><div class="val">${rows.filter(function(r){return r.status==='under';}).length}</div></div>
+      <div class="kpi warn"><div class="lbl">Over-Served</div><div class="val">${rows.filter(function(r){return r.status==='over';}).length}</div></div>
+      <div class="kpi"><div class="lbl">No SLI on File</div><div class="val">${noSli.length}</div></div>
+    </div>
+  `;
+
+  if (!actionable.length && !noSli.length) {
+    return summary + '<p class="lead-note">Everyone with a current SLI assessment is within their target range. Nice.</p>';
+  }
+
+  // BUG-14: last-two-assessment direction, shown next to each client's current target so a
+  // manager can see at a glance whether service volume is keeping pace with a changing level.
+  function trendCellHtml(r) {
+    if (!r.trend) return '<span style="color:var(--muted, #888)">—</span>';
+    var arrow = r.trend.direction === 'improving' ? '↓' : '↑';
+    var color = r.trend.direction === 'improving' ? 'var(--good, #2a9d5c)' : 'var(--bad, #c0392b)';
+    return '<span title="' + escapeHtml((r.trend.prev.assessment_date || '?') + ' → ' + (r.trend.curr.assessment_date || '?')) + '" style="color:' + color + ';font-weight:600;">'
+      + 'L' + escapeHtml(String(r.trend.prev.final_support_level)) + ' → L' + escapeHtml(String(r.trend.curr.final_support_level)) + ' ' + arrow
+      + '</span>';
+  }
+
+  // BUG-23: a client whose earliest note falls inside the averaging window gets a shorter
+  // effective window (see computeUtilization) -- flag that here so a low avg/wk doesn't read
+  // as "under-served" when it's really just "hasn't been on caseload for the full window yet."
+  function clientCellHtml(r) {
+    var name = escapeHtml(r.client);
+    if (!r.isRecentAdmit) return name;
+    return name + ' <span class="badge" title="On caseload ' + Math.round(r.weeksInWindow) + ' of the last ' + UTILIZATION_WEEKS_BACK + ' weeks — average is based on a shorter window" style="font-size:10px;vertical-align:1px;">recent admit</span>';
+  }
+
+  var tableRows = actionable.map(function(r) {
+    return `
+      <tr>
+        <td>${clientCellHtml(r)}</td>
+        <td>${escapeHtml(r.targetLabel || '—')}</td>
+        <td class="num">${r.avgWeekly.toFixed(1)} hrs/wk</td>
+        <td>${trendCellHtml(r)}</td>
+        <td><span class="badge badge-${STATUS_CLASS[r.status] === 'ok' ? 'reviewed' : (STATUS_CLASS[r.status] === 'bad' ? 'concern' : 'itp')}">${STATUS_LABEL[r.status]}</span></td>
+      </tr>
+    `;
+  }).join('');
+
+  var table = actionable.length ? `
+    <table class="lead-table">
+      <thead><tr><th>Client</th><th>SLI Target</th><th>Actual (avg/wk)</th><th>SLI Trend</th><th>Status</th></tr></thead>
+      <tbody>${tableRows}</tbody>
+    </table>
+  ` : '<p class="lead-note">No under- or over-served clients right now among those with a current SLI on file.</p>';
+
+  var noSliNote = noSli.length
+    ? '<div class="lead-note" style="margin-top:10px;">' + noSli.length + ' client(s) with recent session activity have no current SLI assessment on file: ' + noSli.map(function(r){ return escapeHtml(r.client); }).join(', ') + '. Per the SLI 2.0 manual, an initial assessment should exist for anyone receiving peer support services.</div>'
+    : '';
+
+  return summary + table + noSliNote;
+}
+
+var leadershipSubTab = 'utilization';
+var leadershipData = null; // cached computed sections so switching sub-tabs doesn't recompute
+
+function renderLeadershipDashboard(notes, sliRows, utilSinceStr, sliHistoryByClient) {
+  var container = document.getElementById('leadershipMode');
+  leadershipData = {
+    trend: computeMonthlyTrend(notes),
+    scorecard: computeProviderScorecard(notes),
+    escStats: computeEscalationStats(notes),
+    compliance: computeComplianceRollup(notes),
+    utilization: computeUtilization(notes, sliRows || [], utilSinceStr, sliHistoryByClient || {})
+  };
+
+  var openEscCount = (leadershipData.escStats.totalOpen || 0);
+  var utilFlagCount = leadershipData.utilization.filter(function(r){ return r.status === 'not_engaged' || r.status === 'under' || r.status === 'over'; }).length;
+  var complianceFlagCount = notes.filter(function(n){ return n.compliance_grade === 'Needs Improvement' || n.compliance_grade === 'Non-Compliant'; }).length;
+
+  container.innerHTML = `
+    <div class="mode-toggle" style="margin-bottom:20px;">
+      <div class="mode-tab lead-sub-tab" data-leadtab="utilization">Utilization${utilFlagCount ? ' <span class="count">' + utilFlagCount + '</span>' : ''}</div>
+      <div class="mode-tab lead-sub-tab" data-leadtab="safety">Safety Trend</div>
+      <div class="mode-tab lead-sub-tab" data-leadtab="escalations">Escalations${openEscCount ? ' <span class="count">' + openEscCount + '</span>' : ''}</div>
+      <div class="mode-tab lead-sub-tab" data-leadtab="compliance">Compliance${complianceFlagCount ? ' <span class="count">' + complianceFlagCount + '</span>' : ''}</div>
+      <div class="mode-tab lead-sub-tab" data-leadtab="providers">Provider Scorecard</div>
+    </div>
+    <div id="leadSubContent"></div>
+  `;
+
+  document.querySelectorAll('.lead-sub-tab').forEach(function(tab) {
+    tab.classList.toggle('active', tab.getAttribute('data-leadtab') === leadershipSubTab);
+    tab.onclick = function() {
+      leadershipSubTab = tab.getAttribute('data-leadtab');
+      renderLeadershipSubContent();
+    };
+  });
+
+  renderLeadershipSubContent();
+}
+
+function renderLeadershipSubContent() {
+  var el = document.getElementById('leadSubContent');
+  if (!el || !leadershipData) return;
+  document.querySelectorAll('.lead-sub-tab').forEach(function(tab) {
+    tab.classList.toggle('active', tab.getAttribute('data-leadtab') === leadershipSubTab);
+  });
+
+  var d = leadershipData;
+  var html = '';
+  if (leadershipSubTab === 'utilization') {
+    html = `
+      <div class="lead-section">
+        <div class="lead-section-title">Utilization vs. SLI Support Level</div>
+        <div class="lead-section-sub">Actual peer support hours (standard notes only, ${UTILIZATION_WEEKS_BACK}-week average) against each client's current SLI-assigned target. Point estimates from session length ranges &mdash; a signal to check, not a precise measurement.</div>
+        ${renderUtilizationHtml(d.utilization)}
+      </div>
+    `;
+  } else if (leadershipSubTab === 'safety') {
+    html = `
+      <div class="lead-section">
+        <div class="lead-section-title">Safety &amp; Concern Trend</div>
+        <div class="lead-section-sub">Last ${LEADERSHIP_MONTHS_BACK} months, by session date. Watch the amber (AI-caught, not self-reported) segment especially &mdash; that's the gap the safety-net scan exists to close.</div>
+        ${renderMonthlyTrendHtml(d.trend)}
+      </div>
+    `;
+  } else if (leadershipSubTab === 'escalations') {
+    html = `
+      <div class="lead-section">
+        <div class="lead-section-title">Clinical Director Hub — Escalation Resolution</div>
+        <div class="lead-section-sub">Time from escalation to being marked resolved in the Clinical Director Hub's Escalated Charts queue. Anything open past 7 days shows in red below.</div>
+        ${renderEscalationAgingHtml(d.escStats)}
+      </div>
+    `;
+  } else if (leadershipSubTab === 'compliance') {
+    html = `
+      <div class="lead-section">
+        <div class="lead-section-title">Documentation Compliance by Program</div>
+        <div class="lead-section-sub">Every note graded against the UM framework standards, not just flagged ones.</div>
+        ${renderComplianceRollupHtml(d.compliance)}
+      </div>
+    `;
+  } else if (leadershipSubTab === 'providers') {
+    html = `
+      <div class="lead-section">
+        <div class="lead-section-title">Provider Scorecard</div>
+        <div class="lead-section-sub">Flag rate and escalation history by PRS, last ${LEADERSHIP_MONTHS_BACK} months. Meant as a supervision lens &mdash; who needs support, not a scoreboard.</div>
+        ${renderProviderScorecardHtml(d.scorecard)}
+      </div>
+    `;
+  }
+  el.innerHTML = html;
+}
+
+// ── INIT ──
+(async function init() {
+  var { data } = await sb.auth.getSession();
+  if (data && data.session) {
+    var reviewerLookup = await sb.from('reviewers').select('name, role, divisions, email').eq('id', data.session.user.id).single();
+    if (!reviewerLookup.error && reviewerLookup.data) {
+      currentReviewer = reviewerLookup.data;
+      await attachRosterScope(currentReviewer, data.session.user.id);
+      await loadAndRenderDashboard();
+      return;
+    }
+  }
+  renderLogin();
+})();
+</script>
+</body>
+</html>
