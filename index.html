@@ -265,6 +265,34 @@ function scopeNotesQuery(query) {
   return query.in('provider_email', emails);
 }
 
+// FIX (9/30/26): Supabase/PostgREST caps any single select() response at
+// 1000 rows by default -- silently, with no error -- so every unpaginated
+// query against a table this size (3,400+ notes in just the last 90 days)
+// was truncating both "Total Notes (in view)" and "Needs Review" at exactly
+// 1000, hiding roughly two-thirds of real notes from review. This pages
+// through in batches of 1000 using .range() until a page comes back short.
+//
+// buildQuery(from, to) must build and return a FRESH query builder each call
+// (a Supabase builder can't be re-awaited or rewound after use) with
+// .range(from, to) applied as the last step. Ordering must be fully
+// deterministic (a unique tie-breaker column, not just session_date, which
+// many notes share) or rows can be skipped or duplicated across page
+// boundaries.
+async function fetchAllRows(buildQuery, pageSize) {
+  pageSize = pageSize || 1000;
+  var allRows = [];
+  var offset = 0;
+  while (true) {
+    var page = await buildQuery(offset, offset + pageSize - 1);
+    if (page.error) return { data: null, error: page.error };
+    var rows = page.data || [];
+    allRows = allRows.concat(rows);
+    if (rows.length < pageSize) break;
+    offset += pageSize;
+  }
+  return { data: allRows, error: null };
+}
+
 // Shared definition of "this note has a flag worth someone's attention" --
 // used both for the note card's border/color and for the Routine filter, so
 // the two never drift out of sync.
@@ -343,27 +371,41 @@ async function loadAndRenderDashboard() {
   // General note oversight: every submitted note loads, not just flagged
   // ones. Concern/ITP/compliance flags are filters and badges on top of the
   // full list now, rather than a gate on what appears at all.
-  var baseQuery = sb.from(TABLE).select('*').order('session_date', { ascending: false });
-
+  //
   // Date-range window keeps the day-to-day list from growing unbounded now
   // that everything loads -- but it NEVER hides a note still needing review,
   // no matter how old: "reviewed=false OR within the window", not just
   // "within the window". Only already-closed-out old notes drop out of view.
+  var cutoffStr = null;
   if (currentDateRangeDays !== 'all') {
     var cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - currentDateRangeDays);
-    var cutoffStr = cutoff.toISOString().slice(0, 10);
-    baseQuery = baseQuery.or('reviewed.eq.false,session_date.gte.' + cutoffStr);
+    cutoffStr = cutoff.toISOString().slice(0, 10);
   }
 
-  var query = scopeNotesQuery(baseQuery);
-  if (!query) {
+  function buildNotesQuery() {
+    // .order() on id too: session_date alone isn't unique (many notes share
+    // a day), and .range() pagination needs a fully deterministic sort or
+    // rows can be skipped/duplicated across page boundaries.
+    var q = sb.from(TABLE).select('*')
+      .order('session_date', { ascending: false })
+      .order('id', { ascending: false });
+    if (cutoffStr) {
+      q = q.or('reviewed.eq.false,session_date.gte.' + cutoffStr);
+    }
+    return scopeNotesQuery(q);
+  }
+
+  if (!buildNotesQuery()) {
     // No roster entries for this reviewer yet -- nothing to show.
     allNotes = [];
     renderShell(false);
     return;
   }
-  var { data, error } = await query;
+
+  var { data, error } = await fetchAllRows(function(from, to) {
+    return buildNotesQuery().range(from, to);
+  });
 
   if (error) {
     document.getElementById('notesList').innerHTML = '<div class="empty-state"><p>Error loading notes: ' + escapeHtml(error.message) + '</p></div>';
@@ -1153,12 +1195,18 @@ async function loadCaseloadPatterns() {
   var container = document.getElementById('patternsMode');
   container.innerHTML = '<div class="loading-state">Loading caseload patterns&hellip;</div>';
 
-  var patternsQuery = scopeNotesQuery(sb.from(TABLE).select('*').order('session_date', { ascending: true }));
-  if (!patternsQuery) {
+  function buildPatternsQuery() {
+    return scopeNotesQuery(sb.from(TABLE).select('*')
+      .order('session_date', { ascending: true })
+      .order('id', { ascending: true }));
+  }
+  if (!buildPatternsQuery()) {
     renderCaseloadPatterns([], 0);
     return;
   }
-  var { data: notes, error: notesErr } = await patternsQuery;
+  var { data: notes, error: notesErr } = await fetchAllRows(function(from, to) {
+    return buildPatternsQuery().range(from, to);
+  });
   if (notesErr) {
     container.innerHTML = '<div class="empty-state"><p>Error loading notes: ' + escapeHtml(notesErr.message) + '</p></div>';
     return;
@@ -1300,18 +1348,23 @@ async function loadLeadershipDashboard() {
   utilSince.setDate(utilSince.getDate() - (UTILIZATION_WEEKS_BACK * 7));
   var utilSinceStr = utilSince.toISOString().slice(0, 10);
 
-  var leadershipNotesQuery = scopeNotesQuery(sb
-    .from(TABLE)
-    .select('id, client_number, session_date, provider_email, program, note_type, session_length, concern_flagged, itp_flagged, ai_concern_flagged, escalated, escalated_date, resolved, resolved_date, compliance_grade')
-    .gte('session_date', sinceStr)
-    .order('session_date', { ascending: true }));
+  function buildLeadershipNotesQuery() {
+    return scopeNotesQuery(sb
+      .from(TABLE)
+      .select('id, client_number, session_date, provider_email, program, note_type, session_length, concern_flagged, itp_flagged, ai_concern_flagged, escalated, escalated_date, resolved, resolved_date, compliance_grade')
+      .gte('session_date', sinceStr)
+      .order('session_date', { ascending: true })
+      .order('id', { ascending: true }));
+  }
 
-  if (!leadershipNotesQuery) {
+  if (!buildLeadershipNotesQuery()) {
     renderLeadershipDashboard([], [], utilSinceStr);
     return;
   }
 
-  var notesRes = await leadershipNotesQuery;
+  var notesRes = await fetchAllRows(function(from, to) {
+    return buildLeadershipNotesQuery().range(from, to);
+  });
 
   if (notesRes.error) {
     container.innerHTML = '<div class="empty-state"><p>Error loading leadership data: ' + escapeHtml(notesRes.error.message) + '</p></div>';
