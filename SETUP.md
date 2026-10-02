@@ -10,7 +10,7 @@ Single-file app (`index.html`) — oversight/compliance tool for managers and di
 
 ## What this is
 
-Split out of the `thrive-hub` repo (previously `tracker.html`) on 9/11/26. It doesn't share data with Data & Staff Hub — it reads its own relational `roster` table (provider_email → manager_id) plus the shared `notes` table — so it doesn't belong bundled with either that repo or Program Hub's board/funder-facing reporting tools. Its actual audience is any manager or director across any program, so it gets its own single deployment that every hub links out to.
+Split out of the `thrive-hub` repo (previously `tracker.html`) on 9/11/26. It doesn't share data with Data & Staff Hub — it reads its own relational `roster` table (provider_email → manager_id) plus the shared `dap_note_analytics` table — so it doesn't belong bundled with either that repo or Program Hub's board/funder-facing reporting tools. Its actual audience is any manager or director across any program, so it gets its own single deployment that every hub links out to.
 
 ## Cross-repo links that point here
 
@@ -22,3 +22,4 @@ Once this is live, update these from the old relative path (`tracker.html`) to t
 ## Known guess pending confirmation
 
 Every link above currently points to `https://thrive-flagged-notes-tracker.onrender.com` — a guess following this ecosystem's repo-name-as-subdomain convention, not a confirmed live URL. Once this is actually deployed, confirm the real URL and correct every link listed above if it's different.
+
