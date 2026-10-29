@@ -197,6 +197,38 @@ body{font-family:'IBM Plex Sans',system-ui,sans-serif;background:var(--bg);color
 .ack-btn:hover{border-color:var(--thrive-blue);color:var(--thrive-blue);}
 .ack-btn:disabled{opacity:0.5;cursor:not-allowed;}
 .pattern-count-note{font-size:11.5px;color:var(--muted);margin-bottom:14px;font-family:'IBM Plex Mono',monospace;}
+/* Coaching scorecard (Sarah's 10/26 feedback) */
+.flag-explainer{background:var(--paper);border:1px solid var(--rule);border-radius:var(--radius);padding:12px 16px;margin-bottom:18px;font-size:12.5px;color:var(--ink-soft);line-height:1.6;box-shadow:var(--shadow);}
+.flag-explainer summary{cursor:pointer;font-weight:600;color:var(--ink);}
+.flag-explainer ul{margin:8px 0 4px 18px;}
+.flag-explainer li{margin-bottom:4px;}
+.scorecard-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+.scorecard-toolbar label{font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);}
+.lead-table tr.clickable{cursor:pointer;}
+.lead-table tr.clickable:hover td{background:var(--bg);}
+.lead-table tr.high-risk.clickable:hover td{filter:brightness(0.97);}
+.reason-list{font-size:11.5px;color:var(--bad);margin-top:3px;line-height:1.45;}
+.focus-cell{font-size:12px;color:var(--ink-soft);}
+.team-pattern{display:inline-block;background:var(--warn-bg);color:var(--warn);font-size:11px;font-weight:600;padding:2px 8px;border-radius:6px;margin:2px 4px 2px 0;}
+.view-link{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--thrive-blue);white-space:nowrap;}
+.list-count{font-size:11.5px;color:var(--muted);margin:-8px 0 12px;font-family:'IBM Plex Mono',monospace;}
+.similar-list{font-size:11.5px;color:var(--warn);margin-top:6px;line-height:1.5;}
+.table-scroll{overflow-x:auto;}
+.handled-toggle{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:var(--ink-soft);display:inline-flex;align-items:center;gap:5px;padding:0 8px;cursor:pointer;}
+.team-view-label{font-family:'IBM Plex Mono',monospace;font-size:11.5px;font-weight:600;color:var(--ink-soft);padding:0 8px;text-transform:uppercase;letter-spacing:.02em;}
+.scan-status{font-size:11.5px;color:var(--muted);margin:-8px 0 14px;font-family:'IBM Plex Mono',monospace;}
+.scan-status a{color:var(--thrive-blue);font-weight:600;}
+.review-prompts{margin-top:12px;background:var(--bg);border:1px solid var(--rule);border-radius:var(--radius-sm);padding:10px 12px;max-width:640px;}
+.review-prompts .rp-title{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-soft);margin-bottom:6px;}
+.rp-item{font-size:12.5px;line-height:1.5;color:var(--ink);padding:3px 0 3px 10px;border-left:3px solid var(--rule-strong);margin-bottom:5px;}
+.rp-item.rp-risk{border-left-color:var(--bad);}
+.rp-item.rp-integrity{border-left-color:var(--bad);}
+.rp-item.rp-coaching{border-left-color:var(--warn);}
+.rp-item.rp-info{border-left-color:var(--thrive-blue);}
+.lead-table.compact th,.lead-table.compact td{padding:9px 10px;}
+.lead-table.compact td.num,.lead-table.compact th{white-space:nowrap;}
+.lead-table.compact td.provider-cell{min-width:210px;}
+.lead-table.compact td.focus-cell{min-width:190px;}
 </style>
 </head>
 <body>
@@ -212,10 +244,17 @@ const TABLE = 'dap_note_analytics';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let currentReviewer = null; // { name, role, divisions }
-let currentFilter = 'unreviewed';
+let currentFilter = 'unreviewed';   // review queue: unreviewed | sent_back | director_escalated | escalated | ur | all
+let currentFlagFilter = 'all';
+let currentEscFilter = 'to_me';      // Escalated to Me view: to_me | clinical | ur (last two org-wide only)
+let showHandledEscalations = false;       // flag type within the queue: all | risk | documentation | repetitive | itp | routine | awaiting_scan
 let currentDateRangeDays = 90; // 'all' or a number of days; unreviewed notes are always included regardless
 let allNotes = [];
 let lastSyncedAt = null; // when notes were last successfully pulled from the server — shown near Refresh so reviewers know how current the list is
+let currentProviderFilter = 'all'; // lowercased provider_email, or 'all'
+let currentManagerFilter = 'all';  // manager display name, or 'all'
+let noteSimilarity = {};           // note id -> [{id, date, client, sim, crossClient}] for notes currently in Note Review
+let scorecardManagerFilter = 'all';
 
 function fmtLastSynced(dt){
   if(!dt) return 'not yet synced';
@@ -239,20 +278,244 @@ function scopedProviderEmails() {
   return (currentReviewer && currentReviewer.role === 'org_wide') ? null : ((currentReviewer && currentReviewer.supervisedProviders) || []);
 }
 
+// Three levels of scope, all driven by the `roster` table:
+//   manager  -- roster.manager_id = me   -> sees only their own team
+//   director -- roster.director_id = me  -> sees every team under them
+//   org_wide -- reviewers.role            -> sees everything
+// A person can be both (a director who also directly supervises a team).
 async function attachRosterScope(reviewer, userId) {
+  reviewer.managerByProvider = {};  // lowercased provider_email -> manager name
+  reviewer.directorByProvider = {}; // lowercased provider_email -> director name
+  reviewer.isDirector = false;
   if (reviewer.role === 'org_wide') {
     reviewer.supervisedProviders = null;
+    reviewer.isDirector = true;
+    await loadManagerDirectory(reviewer, null);
     return;
   }
-  var { data, error } = await sb.from('roster').select('provider_email').eq('manager_id', userId);
-  if (error) {
-    console.error('Could not load roster/supervision scope', error);
+  var res = await sb.from('roster').select('provider_email, manager_id, director_id')
+    .or('manager_id.eq.' + userId + ',director_id.eq.' + userId);
+  if (res.error && /director_id/.test(res.error.message || '')) {
+    // roster.director_id hasn't been added yet (SETUP.md) -- manager scope only.
+    res = await sb.from('roster').select('provider_email, manager_id').eq('manager_id', userId);
+  }
+  if (res.error) {
+    console.error('Could not load roster/supervision scope', res.error);
     // Fail closed: if we can't tell what this reviewer should see, show
     // nothing rather than risk showing another division's notes.
     reviewer.supervisedProviders = [];
     return;
   }
-  reviewer.supervisedProviders = (data || []).map(function(r){ return r.provider_email; }).filter(Boolean);
+  var rows = res.data || [];
+  // Lowercased: notes and roster are normalized to lowercase in Supabase
+  // (roster_import.sql), and .in() matches exactly.
+  reviewer.supervisedProviders = rows.map(function(r){ return r.provider_email ? String(r.provider_email).trim().toLowerCase() : null; }).filter(Boolean);
+  reviewer.isDirector = rows.some(function(r){ return r.director_id === userId; });
+  await fillPeopleMaps(reviewer, rows);
+}
+
+// Org-wide reviewers get the full roster so Manager/Director columns and
+// filters work everywhere. Best-effort: if RLS blocks reading the roster or
+// reviewers table, those columns just say "No manager on roster".
+async function loadManagerDirectory(reviewer) {
+  var rosterRes = await fetchAllRows(function(from, to) {
+    return sb.from('roster').select('*')
+      .order('provider_email', { ascending: true })
+      .order('manager_id', { ascending: true })
+      .range(from, to);
+  });
+  if (rosterRes.error) { console.warn('Could not load roster for Manager column', rosterRes.error); return; }
+  await fillPeopleMaps(reviewer, rosterRes.data || []);
+}
+
+async function fillPeopleMaps(reviewer, rows) {
+  var ids = {};
+  rows.forEach(function(r){ if (r.manager_id) ids[r.manager_id] = true; if (r.director_id) ids[r.director_id] = true; });
+  var nameById = {};
+  var idList = Object.keys(ids);
+  if (idList.length) {
+    var revRes = await sb.from('reviewers').select('id, name').in('id', idList);
+    if (revRes.error) console.warn('Could not load reviewer names', revRes.error);
+    else (revRes.data || []).forEach(function(r){ nameById[r.id] = r.name; });
+  }
+  rows.forEach(function(r) {
+    if (!r.provider_email) return;
+    var k = r.provider_email.toLowerCase();
+    reviewer.managerByProvider[k] = nameById[r.manager_id] || 'Unknown manager';
+    if (r.director_id) reviewer.directorByProvider[k] = nameById[r.director_id] || 'Unknown director';
+  });
+}
+
+function sameName(a, b) {
+  return !!a && !!b && String(a).trim().toLowerCase() === String(b).trim().toLowerCase();
+}
+
+// ── ESCALATED TO ME ──
+// "To Me": Escalate-to-Director items routed to this reviewer (by the name
+// stored at escalation time, or by being the provider's roster director).
+// Org-wide reviewers also get the Clinical Director and Utilization Review queues.
+function escalatedToMe(n) {
+  if (!n.director_escalated || !currentReviewer) return false;
+  if (sameName(n.director_escalated_to, currentReviewer.name)) return true;
+  var dir = currentReviewer.directorByProvider && currentReviewer.directorByProvider[String(n.provider_email || '').toLowerCase()];
+  return sameName(dir, currentReviewer.name);
+}
+function isEscalationOpen(n) {
+  if (currentEscFilter === 'clinical') return n.escalated && !n.resolved;
+  if (currentEscFilter === 'ur') return n.ur_referred && !n.ur_resolved;
+  return escalatedToMe(n) && !n.director_escalated_ack;
+}
+function matchesEscFilter(n) {
+  if (currentEscFilter === 'clinical') return !!n.escalated;
+  if (currentEscFilter === 'ur') return !!n.ur_referred;
+  return escalatedToMe(n);
+}
+function openEscalationsToMeCount() {
+  return allNotes.filter(function(n){ return escalatedToMe(n) && !n.director_escalated_ack; }).length;
+}
+
+function managerFor(email) {
+  if (!email) return 'No manager on roster';
+  var map = (currentReviewer && currentReviewer.managerByProvider) || {};
+  return map[String(email).toLowerCase()] || 'No manager on roster';
+}
+
+// ══════════════════════════════════════════════════════════════════
+// COACHING FLAGS (added 10/29/26 from Sarah's feedback)
+// A "flag" on the Provider Scorecard now means a documentation pattern
+// worth a coaching conversation -- NOT that the PRS self-reported a
+// safety concern or an ITP update. Those are the PRS doing their job and
+// stay visible (badges, filters, Safety Trend tab), but they no longer
+// inflate a provider's flag rate. Every threshold lives in COACHING below
+// so the "How flags work" explainer on the page can't drift from the math.
+// ══════════════════════════════════════════════════════════════════
+var COACHING = {
+  windowDays: 90,        // scorecard looks at the last 90 days of notes
+  minNotes: 5,           // below this, rates are too noisy to mark a provider
+  minGraded: 5,          // need at least this many graded notes to judge documentation quality
+  docRate: 0.30,         // 30%+ of graded notes Needs Improvement / Non-Compliant
+  repeatRate: 0.30,      // 30%+ of notes closely match another note for the same client
+  crossClientMin: 1,     // any note closely matching a DIFFERENT client's note
+  aiOnlyMin: 2,          // 2+ safety concerns the AI caught that the PRS didn't self-report
+  teamShare: 0.5         // a theme is a "team pattern" when 2+ providers AND half the manager's team share it
+};
+
+// Near-duplicate text detection. Compares each note against the same
+// provider's other notes within SIM_WINDOW_DAYS, using 3-word-phrase overlap
+// (Jaccard). Checks the whole note and also Assessment+Plan on their own,
+// since a PRS can vary the session description but paste the same
+// Assessment/Plan every week -- the "comfort zone" pattern.
+var SIM_THRESHOLD = 0.5;   // 50%+ of 3-word phrases shared
+var SIM_MIN_WORDS = 25;    // shorter text is too short to compare meaningfully
+var SIM_WINDOW_DAYS = 90;
+
+function textShingles(text) {
+  if (!text) return null;
+  var words = String(text).toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean);
+  if (words.length < SIM_MIN_WORDS) return null;
+  var set = new Set();
+  for (var i = 0; i + 2 < words.length; i++) set.add(words[i] + ' ' + words[i + 1] + ' ' + words[i + 2]);
+  return set;
+}
+
+function jaccard(a, b) {
+  if (!a || !b) return 0;
+  var small = a.size <= b.size ? a : b, big = small === a ? b : a;
+  if (small.size / big.size < SIM_THRESHOLD) return 0; // can't reach threshold -- skip the work
+  var inter = 0;
+  small.forEach(function(s){ if (big.has(s)) inter++; });
+  return inter / (a.size + b.size - inter);
+}
+
+function computeNoteSimilarity(notes) {
+  var byProvider = {};
+  notes.forEach(function(n) {
+    if (!n.provider_email || !n.session_date) return;
+    // BH Linkage contacts (U/G-code) are legitimately templated -- only compare standard notes.
+    if (n.note_type && n.note_type !== 'standard') return;
+    var full = textShingles([n.description_text, n.assessment_text, n.plan_text].filter(Boolean).join(' '));
+    var ap = textShingles([n.assessment_text, n.plan_text].filter(Boolean).join(' '));
+    if (!full && !ap) return;
+    var k = n.provider_email.toLowerCase();
+    (byProvider[k] = byProvider[k] || []).push({ n: n, full: full, ap: ap, t: new Date(n.session_date + 'T00:00:00').getTime() });
+  });
+  var result = {};
+  var windowMs = SIM_WINDOW_DAYS * 86400000;
+  function add(from, to, sim, cross) {
+    (result[from.id] = result[from.id] || []).push({ id: to.id, date: to.session_date, client: to.client_number, sim: sim, crossClient: cross });
+  }
+  Object.keys(byProvider).forEach(function(k) {
+    var arr = byProvider[k].sort(function(a, b){ return a.t - b.t; });
+    for (var i = 0; i < arr.length; i++) {
+      for (var j = i + 1; j < arr.length && (arr[j].t - arr[i].t) <= windowMs; j++) {
+        var a = arr[i].n, b = arr[j].n;
+        // Same client + same date is almost always a re-submitted entry, not a pattern.
+        if (a.client_number && a.client_number === b.client_number && a.session_date === b.session_date) continue;
+        var sim = Math.max(jaccard(arr[i].full, arr[j].full), jaccard(arr[i].ap, arr[j].ap));
+        if (sim < SIM_THRESHOLD) continue;
+        var cross = !!(a.client_number && b.client_number && a.client_number !== b.client_number);
+        add(a, b, sim, cross);
+        add(b, a, sim, cross);
+      }
+    }
+  });
+  return result;
+}
+
+function isDocQualityFlag(n) {
+  return n.compliance_grade === 'Needs Improvement' || n.compliance_grade === 'Non-Compliant';
+}
+
+// Note-level coaching flags. Returns an array of theme keys.
+function noteCoachingFlags(n, simMap) {
+  var flags = [];
+  if (isDocQualityFlag(n)) flags.push('doc_quality');
+  var m = simMap && simMap[n.id];
+  if (m && m.some(function(x){ return !x.crossClient; })) flags.push('repetitive');
+  if (m && m.some(function(x){ return x.crossClient; })) flags.push('cross_client');
+  if (n.ai_concern_flagged && !n.concern_flagged) flags.push('ai_only');
+  return flags;
+}
+
+var COACHING_THEMES = {
+  individualization: 'Individualization',
+  goal_link: 'Goal link to treatment plan',
+  scope: 'Scope of practice',
+  progress: 'Progress / skill-building',
+  plan: 'Forward plan',
+  repetitive: 'Repetitive language',
+  cross_client: 'Possible copy-paste between clients',
+  ai_only: 'Safety concern not self-reported',
+  other: 'Other documentation'
+};
+
+// Maps a compliance_issues string to a theme. New grades come back tagged
+// ("[Goal Link] ...") per the updated rubric; older untagged grades fall
+// back to keywords, which is approximate.
+function issueTheme(issue) {
+  var s = String(issue || '').toLowerCase();
+  var tag = s.match(/^\s*\[([^\]]+)\]/);
+  if (tag) {
+    var t = tag[1];
+    if (t.indexOf('individual') >= 0) return 'individualization';
+    if (t.indexOf('goal') >= 0) return 'goal_link';
+    if (t.indexOf('scope') >= 0) return 'scope';
+    if (t.indexOf('progress') >= 0) return 'progress';
+    if (t.indexOf('plan') >= 0) return 'plan';
+  }
+  if (/goal|treatment plan|\bitp\b/.test(s)) return 'goal_link';
+  if (/scope|clinical|therap|diagnos|symptom|case management/.test(s)) return 'scope';
+  if (/next step|continue services|follow-up|follow up|forward plan|vague plan/.test(s)) return 'plan';
+  if (/progress|measurable|movement|skill|setback/.test(s)) return 'progress';
+  if (/generic|templat|individual|boilerplate|could apply|swap|copied/.test(s)) return 'individualization';
+  return 'other';
+}
+
+function topThemes(themeCounts, n) {
+  return Object.keys(themeCounts)
+    .filter(function(k){ return themeCounts[k] > 0; })
+    .sort(function(a, b){ return (themeCounts[b] - themeCounts[a]) || (a === 'other' ? 1 : b === 'other' ? -1 : 0); })
+    .slice(0, n || 2);
 }
 
 // Applies roster scoping to a notes-table query builder. Returns null if the
@@ -296,16 +559,104 @@ async function fetchAllRows(buildQuery, pageSize) {
 // Shared definition of "this note has a flag worth someone's attention" --
 // used both for the note card's border/color and for the Routine filter, so
 // the two never drift out of sync.
+// A note written under an email that no manager owns -- a personal email,
+// a typo, or someone missing from the roster. No manager can see these, so
+// they surface in the Flagged queue for org-wide reviewers (the directors).
+var WORK_EMAIL_DOMAIN = '@thrivepeersupport.com';
+function isUnknownAuthor(n) {
+  if (!currentReviewer || currentReviewer.role !== 'org_wide') return false;
+  var e = String(n.provider_email || '').trim().toLowerCase();
+  if (!e || e.slice(-WORK_EMAIL_DOMAIN.length) !== WORK_EMAIL_DOMAIN) return true;
+  var map = currentReviewer.managerByProvider || {};
+  return Object.keys(map).length > 0 && !map[e];
+}
+
 function noteHasAnyFlag(n) {
-  return !!(n.concern_flagged || n.ai_concern_flagged || n.itp_flagged
-    || n.compliance_grade === 'Needs Improvement' || n.compliance_grade === 'Non-Compliant');
+  return isUnknownAuthor(n) || !!(n.concern_flagged || n.ai_concern_flagged || n.itp_flagged
+    || isDocQualityFlag(n) || (noteSimilarity[n.id] && noteSimilarity[n.id].length));
+}
+
+// ══════════════════════════════════════════════════════════════════
+// TRIAGE (10/29/26)
+// Nobody can read every note. Every note is scanned (safety scan at
+// submission, documentation grade + repetition check here), and only notes
+// that come back flagged land in a manager's Needs Review queue. Routine
+// notes stay viewable under All Notes but never ask for action.
+// ══════════════════════════════════════════════════════════════════
+function isAwaitingScan(n) {
+  return !n.compliance_grade && !n.compliance_graded_at && !noteHasAnyFlag(n);
+}
+function noteNeedsReview(n) {
+  return !n.reviewed && noteHasAnyFlag(n);
+}
+// Lower = more urgent. Risk first, then integrity, then documentation, then ITP.
+function notePriority(n) {
+  var sim = noteSimilarity[n.id] || [];
+  if (n.ai_concern_flagged && !n.concern_flagged) return 0;
+  if (n.concern_flagged) return 1;
+  if (isUnknownAuthor(n)) return 2;
+  if (sim.some(function(x){ return x.crossClient; })) return 2;
+  if (n.compliance_grade === 'Non-Compliant') return 3;
+  if (sim.length) return 4;
+  if (n.compliance_grade === 'Needs Improvement') return 5;
+  if (n.itp_flagged) return 6;
+  return 7;
+}
+function matchesFlagFilter(n) {
+  switch (currentFlagFilter) {
+    case 'risk': return !!(n.concern_flagged || n.ai_concern_flagged);
+    case 'documentation': return isDocQualityFlag(n);
+    case 'repetitive': return !!(noteSimilarity[n.id] && noteSimilarity[n.id].length);
+    case 'itp': return !!n.itp_flagged;
+    case 'unknown_author': return isUnknownAuthor(n);
+    case 'routine': return !noteHasAnyFlag(n) && !isAwaitingScan(n);
+    case 'awaiting_scan': return isAwaitingScan(n);
+    default: return true;
+  }
+}
+
+// What the manager should actually look at, per flag. Shown on the card so
+// the reviewer is prompted toward the right content and the right next step.
+function reviewPrompts(n) {
+  var out = [];
+  var sim = (noteSimilarity[n.id] || []).slice().sort(function(a, b){ return b.sim - a.sim; });
+  var fmt = function(d){ return d ? new Date(d + 'T00:00:00').toLocaleDateString() : '?'; };
+  if (n.ai_concern_flagged && !n.concern_flagged) {
+    out.push({ level: 'risk', text: 'Possible risk in the narrative that the coach did not flag. Read the Description for risk language and check that a safety follow-up is documented. If risk looks active, escalate to the Clinical Director.' });
+  }
+  if (n.concern_flagged) {
+    var types = (n.concern_type && n.concern_type.length) ? (' (' + n.concern_type.join(', ') + ')') : '';
+    out.push({ level: 'risk', text: 'Coach reported a concern' + types + '. Confirm the follow-up and any safety plan are documented. Escalate to the Clinical Director if the risk is active or unresolved.' });
+  }
+  if (isUnknownAuthor(n)) {
+    var em = String(n.provider_email || '(blank)');
+    var personal = em.toLowerCase().slice(-WORK_EMAIL_DOMAIN.length) !== WORK_EMAIL_DOMAIN;
+    out.push({ level: 'integrity', text: (personal
+      ? 'Written under a non-work email (' + em + '). No manager can see this note. Find out who wrote it, remind them to use their Thrive email, and have their notes moved to it (SQL in roster_import.sql).'
+      : 'Written by ' + em + ', who is not on the roster, so no manager can see this note. Add them to the roster under their manager.') });
+  }
+  var cross = sim.filter(function(x){ return x.crossClient; })[0];
+  if (cross) {
+    out.push({ level: 'integrity', text: 'Wording closely matches client ' + (cross.client || '?') + '’s note from ' + fmt(cross.date) + ' (' + Math.round(cross.sim * 100) + '%). Confirm this note reflects this client’s session; if not, send it back to the coach.' });
+  }
+  var same = sim.filter(function(x){ return !x.crossClient; })[0];
+  if (same) {
+    out.push({ level: 'coaching', text: 'Repeats this client’s note from ' + fmt(same.date) + ' (' + Math.round(same.sim * 100) + '%). Is the client moving toward their goals, or is the note being carried forward? Good for a coaching conversation; refer to Utilization Review if services may not be helping the client move forward.' });
+  }
+  if (isDocQualityFlag(n)) {
+    out.push({ level: 'coaching', text: 'Documentation graded ' + n.compliance_grade + ' (issues listed above). Send back to the coach if it needs revision before audit or billing.' });
+  }
+  if (n.itp_flagged) {
+    out.push({ level: 'info', text: 'Coach flagged an ITP update. Confirm the treatment plan update is scheduled. Refer to Utilization Review if the level of care may need to change.' });
+  }
+  return out;
 }
 
 // ── LOGIN ──
 function renderLogin(errorMsg) {
   app.innerHTML = `
     <div class="topbar">
-      <span class="badge">Thrive<span class="sep">/</span>Flagged Notes Tracker <span class="sub">&middot; Clinical Oversight</span></span>
+      <span class="badge">Thrive<span class="sep">/</span>Flagged Notes Tracker <span class="sub">&middot; Utilization Management &amp; Oversight</span></span>
     </div>
     <div class="login-wrap">
       <div class="eyebrow">Restricted Access</div>
@@ -391,7 +742,13 @@ async function loadAndRenderDashboard() {
       .order('session_date', { ascending: false })
       .order('id', { ascending: false });
     if (cutoffStr) {
-      q = q.or('reviewed.eq.false,session_date.gte.' + cutoffStr);
+      // Everything in the window, plus older notes that are still open AND
+      // flagged (or escalated). Routine unreviewed notes outside the window
+      // no longer load -- they were never going to be reviewed, and pulling
+      // every one since go-live made "Needs Review" an impossible number.
+      q = q.or('session_date.gte.' + cutoffStr
+        + ',director_escalated.eq.true,escalated.eq.true'
+        + ',and(reviewed.eq.false,or(concern_flagged.eq.true,ai_concern_flagged.eq.true,itp_flagged.eq.true,compliance_grade.in.("Needs Improvement","Non-Compliant")))');
     }
     return scopeNotesQuery(q);
   }
@@ -413,8 +770,10 @@ async function loadAndRenderDashboard() {
   }
 
   allNotes = data || [];
+  noteSimilarity = computeNoteSimilarity(allNotes);
   lastSyncedAt = new Date();
   renderShell(false);
+  autoScanInBackground();
 }
 
 function renderShell(loading) {
@@ -423,14 +782,17 @@ function renderShell(loading) {
     scopeLabel = 'All divisions';
   } else {
     var supervised = currentReviewer.supervisedProviders || [];
+    var mgrCount = {};
+    supervised.forEach(function(e){ mgrCount[managerFor(e)] = true; });
     if (!supervised.length) scopeLabel = 'No providers on your roster yet — contact Brandon';
+    else if (currentReviewer.isDirector) scopeLabel = 'Director view: ' + supervised.length + ' providers across ' + Object.keys(mgrCount).length + ' team' + (Object.keys(mgrCount).length === 1 ? '' : 's');
     else if (supervised.length <= 6) scopeLabel = 'Supervising: ' + supervised.join(', ');
     else scopeLabel = 'Supervising ' + supervised.length + ' providers';
   }
   var open = allNotes.filter(function(n){ return !n.reviewed; });
   app.innerHTML = `
     <div class="topbar">
-      <span class="badge">Thrive<span class="sep">/</span>Flagged Notes Tracker <span class="sub">&middot; Clinical Oversight</span></span>
+      <span class="badge">Thrive<span class="sep">/</span>Flagged Notes Tracker <span class="sub">&middot; Utilization Management &amp; Oversight</span></span>
       <div class="who">
         Signed in as <strong>${escapeHtml(currentReviewer.name)}</strong>
         <div class="scope">Scope: ${escapeHtml(scopeLabel)}</div>
@@ -439,43 +801,57 @@ function renderShell(loading) {
     </div>
     <div class="content">
       <div class="mode-toggle">
-        <div class="mode-tab" data-mode="notes">Note Review</div>
+        <div class="mode-tab" data-mode="team" title="${currentReviewer.isDirector ? 'Every note from every team under you' : 'Every note from the providers you supervise'}">${currentReviewer.isDirector ? 'All Team Notes' : 'Team Notes'}</div>
+        <div class="mode-tab" data-mode="flagged" title="Notes the scan flagged for review">Flagged Notes<span id="flaggedTabCount"></span></div>
+        ${currentReviewer.isDirector ? '<div class="mode-tab" data-mode="escalated" title="Notes escalated to you">Escalated to Me<span id="escTabCount"></span></div>' : ''}
         <div class="mode-tab" data-mode="patterns">Caseload Patterns</div>
         <div class="mode-tab" data-mode="leadership">Leadership Dashboard</div>
       </div>
 
       <div id="notesMode">
-        <div class="kpi-row">
-          <div class="kpi"><div class="lbl">Total Notes (in view)</div><div class="val">${allNotes.length}</div></div>
-          <div class="kpi bad"><div class="lbl">Needs Review</div><div class="val">${open.length}</div></div>
-          <div class="kpi"><div class="lbl">Escalated to Director (Open)</div><div class="val">${allNotes.filter(function(n){return n.director_escalated && !n.director_escalated_ack;}).length}</div></div>
-          <div class="kpi esc"><div class="lbl">Escalated to Clinical (Open)</div><div class="val">${allNotes.filter(function(n){return n.escalated && !n.resolved;}).length}</div></div>
-          <div class="kpi bad"><div class="lbl">AI-Caught, Not Self-Reported</div><div class="val">${allNotes.filter(function(n){return n.ai_concern_flagged && !n.concern_flagged;}).length}</div></div>
-          <div class="kpi bad"><div class="lbl">Compliance Flags</div><div class="val">${allNotes.filter(function(n){return n.compliance_grade === 'Needs Improvement' || n.compliance_grade === 'Non-Compliant';}).length}</div></div>
-        </div>
+        <div id="kpiRow">${kpiRowHtml()}</div>
 
         <div class="filter-bar">
-          <div class="filter-tab" data-filter="unreviewed">Needs Review</div>
-          <div class="filter-tab" data-filter="director_escalated">Escalated to Director</div>
-          <div class="filter-tab" data-filter="escalated">Escalated to Clinical</div>
-          <div class="filter-tab" data-filter="concern">Concern</div>
-          <div class="filter-tab" data-filter="itp">ITP</div>
-          <div class="filter-tab" data-filter="compliance">Compliance</div>
-          <div class="filter-tab" data-filter="routine">Routine</div>
-          <div class="filter-tab" data-filter="all">All</div>
+          <span id="queueTabs" style="display:contents">
+          <div class="filter-tab" data-filter="unreviewed" title="Flagged notes that haven't been reviewed yet, most urgent first">Needs Review</div>
+          <div class="filter-tab" data-filter="sent_back">Sent Back to Coach</div>
+          <div class="filter-tab" data-filter="director_escalated">Director</div>
+          <div class="filter-tab" data-filter="escalated">Clinical Director</div>
+          <div class="filter-tab" data-filter="ur">Utilization Review</div>
+          <div class="filter-tab" data-filter="all_flagged" title="Every flagged note in the date window, reviewed or not">All Flagged</div>
+          </span>
+          <span id="escTabs" style="display:none">
+            <div class="filter-tab esc-tab" data-esc="to_me">Escalated to Me</div>
+            ${currentReviewer.role === 'org_wide' ? '<div class="filter-tab esc-tab" data-esc="clinical">Clinical Director</div><div class="filter-tab esc-tab" data-esc="ur">Utilization Review</div>' : ''}
+            <label class="handled-toggle"><input type="checkbox" id="showHandledChk" ${showHandledEscalations ? 'checked' : ''}/> Show handled</label>
+          </span>
+          <span id="teamViewLabel" class="team-view-label">${currentReviewer.isDirector ? 'All notes across your teams' : 'All notes from your team'}</span>
           <div class="filter-spacer"></div>
-          <select class="range-select" id="dateRangeSelect" title="Notes still needing review always show, regardless of this window.">
+          <select class="range-select" id="flagFilterSelect" title="Narrow the list to one kind of flag">
+            <option value="all">All flag types</option>
+            <option value="risk">Potential risk</option>
+            <option value="documentation">Documentation grade</option>
+            <option value="repetitive">Repetitive / copy-paste</option>
+            <option value="itp">ITP update</option>
+            ${currentReviewer.role === 'org_wide' ? '<option value="unknown_author">Unknown author (personal email / not on roster)</option>' : ''}
+            <option value="routine">Routine (scanned, no flags)</option>
+            <option value="awaiting_scan">Awaiting scan</option>
+          </select>
+          <span id="peopleFilters" style="display:contents">${renderPeopleFilterSelects()}</span>
+          <select class="range-select" id="dateRangeSelect" title="Flagged notes still needing review always show, regardless of this window.">
             <option value="90">Last 90 days</option>
             <option value="180">Last 6 months</option>
             <option value="365">Last year</option>
             <option value="all">All time</option>
           </select>
-          ${currentReviewer.role === 'org_wide' ? '<button class="refresh-btn" id="gradeBatchBtn">Grade Next Batch</button>' : ''}
+          ${currentReviewer.role === 'org_wide' ? '<button class="refresh-btn" id="gradeBatchBtn" title="Grades the oldest ungraded notes (backfill). New notes are scanned automatically.">Backfill Oldest</button>' : ''}
           <button class="refresh-btn" id="refreshBtn">&#8635; Refresh</button>
           <span id="lastSyncedLabel" title="This list only updates when you sign in or hit Refresh — it does not auto-poll." style="font-size:11px;color:#6B7280;align-self:center;white-space:nowrap">Synced: ${fmtLastSynced(lastSyncedAt)}</span>
         </div>
+        <div id="scanStatus" class="scan-status"></div>
         <div id="gradeBatchStatus" class="lead-section-sub" style="margin-top:-4px;"></div>
-        <div id="notesList">${loading ? '<div class="loading-state">Loading flagged notes&hellip;</div>' : ''}</div>
+        <div id="listCount" class="list-count"></div>
+        <div id="notesList">${loading ? '<div class="loading-state">Loading notes&hellip;</div>' : ''}</div>
       </div>
 
       <div id="patternsMode" style="display:none;">
@@ -488,7 +864,7 @@ function renderShell(loading) {
     </div>
   `;
   document.getElementById('signOutBtn').onclick = handleSignOut;
-  document.getElementById('refreshBtn').onclick = loadAndRenderDashboard;
+  document.getElementById('refreshBtn').onclick = function(){ autoScanDone = 0; loadAndRenderDashboard(); };
   var gradeBatchBtnEl = document.getElementById('gradeBatchBtn');
   if (gradeBatchBtnEl) gradeBatchBtnEl.onclick = gradeNextBatch;
   var dateRangeSelectEl = document.getElementById('dateRangeSelect');
@@ -499,17 +875,147 @@ function renderShell(loading) {
       loadAndRenderDashboard();
     };
   }
-  document.querySelectorAll('.filter-tab').forEach(function(tab){
-    tab.onclick = function(){ currentFilter = tab.getAttribute('data-filter'); renderNotesList(); };
+  document.querySelectorAll('.filter-tab[data-filter]').forEach(function(tab){
+    tab.onclick = function(){ currentFilter = tab.getAttribute('data-filter'); listLimit = LIST_PAGE_SIZE; renderNotesList(); };
   });
+  bindPeopleFilters();
+  document.querySelectorAll('.esc-tab').forEach(function(tab){
+    tab.onclick = function(){ currentEscFilter = tab.getAttribute('data-esc'); listLimit = LIST_PAGE_SIZE; refreshNotesView(); };
+  });
+  var handledChk = document.getElementById('showHandledChk');
+  if (handledChk) handledChk.onchange = function(){ showHandledEscalations = handledChk.checked; listLimit = LIST_PAGE_SIZE; renderNotesList(); };
+  var flagSelectEl = document.getElementById('flagFilterSelect');
+  if (flagSelectEl) {
+    flagSelectEl.value = currentFlagFilter;
+    flagSelectEl.onchange = function(){ currentFlagFilter = flagSelectEl.value; listLimit = LIST_PAGE_SIZE; renderNotesList(); };
+  }
+  updateScanStatus();
   document.querySelectorAll('.mode-tab').forEach(function(tab){
-    tab.onclick = function(){ switchMode(tab.getAttribute('data-mode')); };
+    tab.onclick = function(){
+      var m = tab.getAttribute('data-mode');
+      switchMode(m);
+      if (m === 'team' || m === 'flagged' || m === 'escalated') refreshNotesView();
+    };
   });
   switchMode(currentMode);
+  var kr = document.getElementById('kpiRow'); if (kr) kr.innerHTML = kpiRowHtml(); // also fills the Flagged tab count
   if (!loading) renderNotesList();
 }
 
-var currentMode = 'notes';
+// Manager + Provider dropdowns for Note Review. Manager only shows for
+// org-wide reviewers (everyone else's scope is a single team already).
+function renderPeopleFilterSelects() {
+  var managers = {}, providers = {};
+  allNotes.forEach(function(n) {
+    if (!n.provider_email) return;
+    var mgr = managerFor(n.provider_email);
+    managers[mgr] = true;
+    if (currentManagerFilter === 'all' || mgr === currentManagerFilter) providers[n.provider_email.toLowerCase()] = true;
+  });
+  if (currentProviderFilter !== 'all') providers[currentProviderFilter] = true; // keep a drill-down selection visible
+  var html = '';
+  if (currentReviewer && currentReviewer.isDirector) {
+    html += '<select class="range-select" id="managerFilterSelect" title="Filter by the provider’s manager (from the roster table)">'
+      + '<option value="all">All managers</option>'
+      + Object.keys(managers).sort().map(function(m){ return '<option value="' + escapeHtml(m) + '"' + (m === currentManagerFilter ? ' selected' : '') + '>' + escapeHtml(m) + '</option>'; }).join('')
+      + '</select>';
+  }
+  html += '<select class="range-select" id="providerFilterSelect" title="Filter to one provider">'
+    + '<option value="all">All providers</option>'
+    + Object.keys(providers).sort().map(function(p){ return '<option value="' + escapeHtml(p) + '"' + (p === currentProviderFilter ? ' selected' : '') + '>' + escapeHtml(p) + '</option>'; }).join('')
+    + '</select>';
+  return html;
+}
+
+// Re-renders just the dropdowns in place (not the whole shell, which would
+// reset the Patterns/Leadership tabs to a stuck "Loading..." placeholder).
+function refreshPeopleFilters() {
+  var wrap = document.getElementById('peopleFilters');
+  if (wrap) wrap.innerHTML = renderPeopleFilterSelects();
+  bindPeopleFilters(); // dropdowns only
+}
+
+function bindPeopleFilters() {
+  var providerSelectEl = document.getElementById('providerFilterSelect');
+  if (providerSelectEl) providerSelectEl.onchange = function(){ currentProviderFilter = providerSelectEl.value; listLimit = LIST_PAGE_SIZE; renderNotesList(); };
+  var managerSelectEl = document.getElementById('managerFilterSelect');
+  if (managerSelectEl) managerSelectEl.onchange = function(){
+    currentManagerFilter = managerSelectEl.value;
+    currentProviderFilter = 'all'; // a provider from another team would otherwise silently empty the list
+    listLimit = LIST_PAGE_SIZE;
+    refreshPeopleFilters();
+    renderNotesList();
+  };
+}
+
+// Scorecard row click -> Note Review showing ALL of that provider's notes
+// (flagged and routine), so a manager can compare them side by side.
+function drillIntoProvider(email) {
+  currentProviderFilter = String(email || '').toLowerCase();
+  currentManagerFilter = 'all';
+  currentFlagFilter = 'all';
+  var fs = document.getElementById('flagFilterSelect'); if (fs) fs.value = 'all';
+  switchMode('team');
+  var k = document.getElementById('kpiRow'); if (k) k.innerHTML = kpiRowHtml();
+  refreshPeopleFilters();
+  renderNotesList();
+  window.scrollTo(0, 0);
+}
+
+function kpiRowHtml() {
+  var count = function(fn){ return allNotes.filter(fn).length; };
+  var needs = count(noteNeedsReview);
+  var tc = document.getElementById('flaggedTabCount');
+  if (tc) tc.innerHTML = needs ? ' <span class="count">' + needs + '</span>' : '';
+  var escOpen = openEscalationsToMeCount();
+  var ec = document.getElementById('escTabCount');
+  if (ec) ec.innerHTML = escOpen ? ' <span class="count">' + escOpen + '</span>' : '';
+  if (currentMode === 'escalated') {
+    var orgWide = currentReviewer && currentReviewer.role === 'org_wide';
+    return `
+      <div class="kpi-row">
+        <div class="kpi bad"><div class="lbl">Escalated to Me (Open)</div><div class="val">${escOpen}</div></div>
+        <div class="kpi"><div class="lbl">Acknowledged (in view)</div><div class="val">${count(function(n){ return escalatedToMe(n) && n.director_escalated_ack; })}</div></div>
+        ${orgWide ? '<div class="kpi esc"><div class="lbl">Clinical Director / UR (Open)</div><div class="val">' + count(function(n){ return n.escalated && !n.resolved; }) + ' / ' + count(function(n){ return n.ur_referred && !n.ur_resolved; }) + '</div></div>' : ''}
+      </div>
+    `;
+  }
+  if (currentMode === 'team') {
+    var providers = {};
+    allNotes.forEach(function(n){ if (n.provider_email) providers[n.provider_email.toLowerCase()] = true; });
+    return `
+      <div class="kpi-row">
+        <div class="kpi"><div class="lbl">${currentReviewer.isDirector ? 'All Team Notes' : 'Team Notes'} (in view)</div><div class="val">${allNotes.length}</div></div>
+        <div class="kpi"><div class="lbl">Providers</div><div class="val">${Object.keys(providers).length}</div></div>
+        <div class="kpi bad"><div class="lbl">Flagged, Needs Review</div><div class="val">${needs}</div></div>
+      </div>
+    `;
+  }
+  return `
+    <div class="kpi-row">
+      <div class="kpi bad"><div class="lbl">Needs Review</div><div class="val">${needs}</div></div>
+      <div class="kpi bad"><div class="lbl">Potential Risk, Not Yet Reviewed</div><div class="val">${count(function(n){ return !n.reviewed && (n.concern_flagged || n.ai_concern_flagged); })}</div></div>
+      <div class="kpi warn"><div class="lbl">Sent Back to Coach</div><div class="val">${count(function(n){ return n.reviewed && n.review_outcome === 'rejected'; })}</div></div>
+      <div class="kpi"><div class="lbl">Escalated to Director (Open)</div><div class="val">${count(function(n){ return n.director_escalated && !n.director_escalated_ack; })}</div></div>
+      <div class="kpi esc"><div class="lbl">Escalated to Clinical Director (Open)</div><div class="val">${count(function(n){ return n.escalated && !n.resolved; })}</div></div>
+      <div class="kpi esc"><div class="lbl">Utilization Review (Open)</div><div class="val">${count(function(n){ return n.ur_referred && !n.ur_resolved; })}</div></div>
+    </div>
+  `;
+}
+
+// Refreshes counts + list in place without rebuilding the shell (which
+// would reset the Patterns/Leadership tabs).
+function refreshNotesView() {
+  var k = document.getElementById('kpiRow');
+  if (k) k.innerHTML = kpiRowHtml();
+  autoScanNewlyFlagged = 0;
+  renderNotesList();
+  updateScanStatus();
+}
+
+var currentMode = 'team'; // team | flagged | patterns | leadership
+var LIST_PAGE_SIZE = 100;
+var listLimit = LIST_PAGE_SIZE;
 var patternsLoaded = false;
 var leadershipLoaded = false;
 
@@ -522,7 +1028,15 @@ function switchMode(mode) {
   var patternsEl = document.getElementById('patternsMode');
   var leadershipEl = document.getElementById('leadershipMode');
   if (!notesEl || !patternsEl || !leadershipEl) return;
-  notesEl.style.display = (mode === 'notes') ? 'block' : 'none';
+  var isNotesView = (mode === 'team' || mode === 'flagged' || mode === 'escalated');
+  var et = document.getElementById('escTabs');
+  if (et) et.style.display = (mode === 'escalated') ? 'contents' : 'none';
+  notesEl.style.display = isNotesView ? 'block' : 'none';
+  var qt = document.getElementById('queueTabs');
+  if (qt) qt.style.display = (mode === 'flagged') ? 'contents' : 'none';
+  var tl = document.getElementById('teamViewLabel');
+  if (tl) tl.style.display = (mode === 'team') ? '' : 'none';
+  if (isNotesView) listLimit = LIST_PAGE_SIZE;
   patternsEl.style.display = (mode === 'patterns') ? 'block' : 'none';
   leadershipEl.style.display = (mode === 'leadership') ? 'block' : 'none';
   if (mode === 'patterns' && !patternsLoaded) {
@@ -536,28 +1050,48 @@ function switchMode(mode) {
 }
 
 function renderNotesList() {
-  document.querySelectorAll('.filter-tab').forEach(function(tab){
+  document.querySelectorAll('.filter-tab[data-filter]').forEach(function(tab){
     tab.classList.toggle('active', tab.getAttribute('data-filter') === currentFilter);
+  });
+  document.querySelectorAll('.esc-tab').forEach(function(tab){
+    tab.classList.toggle('active', tab.getAttribute('data-esc') === currentEscFilter);
   });
 
   var filtered = allNotes.filter(function(n){
-    if (currentFilter === 'unreviewed') return !n.reviewed;
+    if (currentProviderFilter !== 'all' && String(n.provider_email || '').toLowerCase() !== currentProviderFilter) return false;
+    if (currentManagerFilter !== 'all' && managerFor(n.provider_email) !== currentManagerFilter) return false;
+    if (!matchesFlagFilter(n)) return false;
+    if (currentMode === 'team') return true; // Team Notes: every note in scope
+    if (currentMode === 'escalated') return matchesEscFilter(n) && (showHandledEscalations || isEscalationOpen(n));
+    if (currentFilter === 'all_flagged') return noteHasAnyFlag(n);
+    if (currentFilter === 'unreviewed') return noteNeedsReview(n);
+    if (currentFilter === 'sent_back') return n.reviewed && n.review_outcome === 'rejected';
     if (currentFilter === 'director_escalated') return n.director_escalated;
     if (currentFilter === 'escalated') return n.escalated;
-    if (currentFilter === 'concern') return n.concern_flagged;
-    if (currentFilter === 'itp') return n.itp_flagged;
-    if (currentFilter === 'compliance') return n.compliance_grade === 'Needs Improvement' || n.compliance_grade === 'Non-Compliant';
-    if (currentFilter === 'routine') return !noteHasAnyFlag(n);
+    if (currentFilter === 'ur') return n.ur_referred;
     return true;
   });
+  if ((currentMode === 'flagged' && currentFilter === 'unreviewed') || currentMode === 'escalated') {
+    filtered.sort(function(a, b){ return (notePriority(a) - notePriority(b)) || String(b.session_date || '').localeCompare(String(a.session_date || '')); });
+  }
 
   var listEl = document.getElementById('notesList');
+  var countEl = document.getElementById('listCount');
+  if (countEl) {
+    var who = currentProviderFilter !== 'all' ? (' for ' + currentProviderFilter) : (currentManagerFilter !== 'all' ? (' for ' + currentManagerFilter + '’s team') : '');
+    countEl.textContent = 'Showing ' + filtered.length + ' note' + (filtered.length === 1 ? '' : 's') + who;
+  }
   if (filtered.length === 0) {
-    listEl.innerHTML = '<div class="empty-state"><p>' + (currentFilter === 'unreviewed' ? 'All caught up — no unreviewed flags in your scope.' : 'No notes match this filter.') + '</p></div>';
+    listEl.innerHTML = '<div class="empty-state"><p>' + ((currentMode === 'flagged' && currentFilter === 'unreviewed') ? 'All caught up — no flagged notes waiting for review on your team.' : (currentMode === 'escalated' ? 'Nothing open has been escalated to you.' : 'No notes match this filter.')) + '</p></div>';
     return;
   }
 
-  listEl.innerHTML = filtered.map(renderNoteCard).join('');
+  var total = filtered.length;
+  filtered = filtered.slice(0, listLimit);
+  listEl.innerHTML = filtered.map(renderNoteCard).join('')
+    + (total > filtered.length ? '<div style="text-align:center;margin:10px 0 30px;"><button class="refresh-btn" id="showMoreBtn">Show ' + Math.min(LIST_PAGE_SIZE, total - filtered.length) + ' more (' + (total - filtered.length) + ' remaining)</button></div>' : '');
+  var moreBtn = document.getElementById('showMoreBtn');
+  if (moreBtn) moreBtn.onclick = function(){ listLimit += LIST_PAGE_SIZE; renderNotesList(); };
   filtered.forEach(function(note){
     var approveBtn = document.getElementById('approveBtn_' + note.id);
     if (approveBtn) approveBtn.onclick = function(){ resolveNote(note.id, 'approved'); };
@@ -570,6 +1104,12 @@ function renderNotesList() {
 
     var escalateClinicalBtn = document.getElementById('escalateClinicalBtn_' + note.id);
     if (escalateClinicalBtn) escalateClinicalBtn.onclick = function(){ escalateToClinical(note); };
+
+    var urBtn = document.getElementById('urBtn_' + note.id);
+    if (urBtn) urBtn.onclick = function(){ referToUtilizationReview(note); };
+
+    var urDoneBtn = document.getElementById('urDoneBtn_' + note.id);
+    if (urDoneBtn) urDoneBtn.onclick = function(){ completeUtilizationReview(note); };
 
     var ackDirectorBtn = document.getElementById('ackDirectorBtn_' + note.id);
     if (ackDirectorBtn) ackDirectorBtn.onclick = function(){ acknowledgeDirectorEscalation(note); };
@@ -600,14 +1140,14 @@ async function resolveNote(noteId, outcome) {
 
   if (error) {
     alert('Could not save: ' + error.message);
-    if (btn) { btn.disabled = false; btn.textContent = outcome === 'approved' ? 'Approve' : 'Reject'; }
+    if (btn) { btn.disabled = false; btn.textContent = outcome === 'approved' ? 'Approve' : 'Send Back to Coach'; }
     return;
   }
   await loadAndRenderDashboard();
 }
 
 async function rejectNote(note) {
-  var reason = prompt('Why is this note being rejected? (Logged, and can be included in the email to the provider.)');
+  var reason = prompt('What does the coach need to fix? (Logged, and included in the email to the coach.)');
   if (reason === null) return;
   reason = reason.trim();
 
@@ -622,12 +1162,12 @@ async function rejectNote(note) {
 
   if (error) {
     alert('Could not save: ' + error.message);
-    if (btn) { btn.disabled = false; btn.textContent = 'Reject'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Send Back to Coach'; }
     return;
   }
 
   if (note.provider_email) {
-    var wantsEmail = confirm('Note marked as rejected. Send an email to ' + note.provider_email + ' now?');
+    var wantsEmail = confirm('Note sent back to the coach. Email ' + note.provider_email + ' now with what needs fixing?');
     if (wantsEmail) emailProvider(Object.assign({}, note, { _rejectReason: reason }));
   }
   await loadAndRenderDashboard();
@@ -643,9 +1183,13 @@ async function escalateToDirector(note) {
 
   var directorName = null;
   if (note.provider_email) {
-    var rosterRes = await sb.from('roster').select('manager_id').eq('provider_email', note.provider_email).maybeSingle();
+    // roster.director_id (optional column -- see SETUP.md) routes to the
+    // director over the provider's manager. Without it, falls back to the
+    // manager, which was the original behavior.
+    var rosterRes = await sb.from('roster').select('*').eq('provider_email', String(note.provider_email).trim().toLowerCase()).maybeSingle();
     if (!rosterRes.error && rosterRes.data) {
-      var mgrRes = await sb.from('reviewers').select('name, email').eq('id', rosterRes.data.manager_id).single();
+      var targetId = rosterRes.data.director_id || rosterRes.data.manager_id;
+      var mgrRes = await sb.from('reviewers').select('name, email').eq('id', targetId).single();
       if (!mgrRes.error && mgrRes.data) { directorName = mgrRes.data.name; }
     }
   }
@@ -703,10 +1247,51 @@ async function escalateToClinical(note) {
 
   if (error) {
     alert('Could not escalate to clinical: ' + error.message);
-    if (btn) { btn.disabled = false; btn.textContent = 'Escalate to Clinical'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Escalate to Clinical Director'; }
     return;
   }
 
+  await loadAndRenderDashboard();
+}
+
+// ── UTILIZATION REVIEW: needs ur_* columns (SQL in SETUP.md). ──
+function urSetupMessage(error) {
+  return /ur_/.test(error.message || '')
+    ? 'Utilization Review isn\'t set up in Supabase yet. Run the SQL in SETUP.md, then try again.'
+    : error.message;
+}
+
+async function referToUtilizationReview(note) {
+  var reason = prompt('What should Utilization Review look at? (e.g. level of care, hours vs. SLI level, no progress toward goals)');
+  if (reason === null) return;
+  var btn = document.getElementById('urBtn_' + note.id);
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+  var { error } = await sb.from(TABLE).update({
+    ur_referred: true, ur_referred_by: currentReviewer.name,
+    ur_referred_date: new Date().toISOString(), ur_reason: reason.trim() || null
+  }).eq('id', note.id);
+  if (error) {
+    alert('Could not refer to Utilization Review: ' + urSetupMessage(error));
+    if (btn) { btn.disabled = false; btn.textContent = 'Refer to Utilization Review'; }
+    return;
+  }
+  await loadAndRenderDashboard();
+}
+
+async function completeUtilizationReview(note) {
+  var outcome = prompt('Utilization Review outcome (optional, e.g. "Level of care stepped down to L2"):');
+  if (outcome === null) return;
+  var btn = document.getElementById('urDoneBtn_' + note.id);
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+  var { error } = await sb.from(TABLE).update({
+    ur_resolved: true, ur_resolved_by: currentReviewer.name,
+    ur_resolved_date: new Date().toISOString(), ur_outcome: outcome.trim() || null
+  }).eq('id', note.id);
+  if (error) {
+    alert('Could not save: ' + urSetupMessage(error));
+    if (btn) { btn.disabled = false; btn.textContent = 'Mark UR Complete'; }
+    return;
+  }
   await loadAndRenderDashboard();
 }
 
@@ -722,75 +1307,36 @@ async function escalateToClinical(note) {
 
 var COMPLIANCE_RUBRIC = 'You are grading Peer Recovery Supporter (PRS) DAP progress notes for a CARF-accredited peer support agency against five documentation standards used by the agency\'s Utilization Review Committee:\n\n'
   + '1. INDIVIDUALIZATION: Is the note specific to this Peer and this session, or could it be swapped into another client\'s chart unchanged?\n'
-  + '2. CLINICAL/PROGRESS RATIONALE: Does the Assessment section tie to a specific goal and describe measurable progress, setback, or status -- not just generic strengths language?\n'
+  + '2. GOAL LINK: Does the note connect the peer\'s intervention to a specific goal on the Peer\'s treatment plan (ITP), with measurable progress, setback, or status -- not just generic strengths language?\n'
   + '3. SCOPE OF PRACTICE: Does the note stay within peer support scope (lived experience, mutuality, self-determination) rather than describing clinical/case-management activity (assessing symptoms, delivering therapy, diagnosing)?\n'
-  + '4. PROGRESS ORIENTATION: Does the note reflect where the Peer stands relative to their goals, not just what happened in the room?\n'
+  + '4. PROGRESS ORIENTATION: Does the note reflect where the Peer stands relative to their goals and document movement, skill-building, or a meaningful setback -- not just a routine check-in or what happened in the room?\n'
   + '5. FORWARD PLAN: Is there a concrete, specific next step (not "continue services" or similarly vague filler)?\n\n'
   + 'You will receive a JSON array of notes, each with an "id" and its "description", "assessment", and "plan" text. For EACH note, return a grade:\n'
   + '- "Compliant": meets all five standards adequately\n'
   + '- "Needs Improvement": meets most standards but has 1-2 clear gaps\n'
   + '- "Non-Compliant": missing multiple standards, or is too generic/templated to be individualized, or strays outside PRS scope of practice\n\n'
-  + 'Return ONLY a JSON array, no other text, in this exact shape: [{"id": "<the id you were given>", "grade": "Compliant" | "Needs Improvement" | "Non-Compliant", "score": <0-100 integer>, "issues": [<short strings, each naming ONE specific gap you found -- omit this key or use an empty array if Compliant>]}]. Be specific in "issues" -- e.g. "Assessment restates status generically instead of naming a measurable action" rather than "needs more detail."';
+  + 'Return ONLY a JSON array, no other text, in this exact shape: [{"id": "<the id you were given>", "grade": "Compliant" | "Needs Improvement" | "Non-Compliant", "score": <0-100 integer>, "issues": [<short strings, each naming ONE specific gap you found and starting with the standard it falls under in brackets -- one of [Individualization], [Goal Link], [Scope], [Progress], [Plan] -- omit this key or use an empty array if Compliant>]}]. Be specific in "issues" -- e.g. "[Goal Link] Assessment restates status generically instead of naming the ITP goal and a measurable action" rather than "needs more detail."';
 
-async function gradeNextBatch() {
-  // Grading spends org money across the whole table, not just one
-  // division's notes -- the button itself is hidden for non-org_wide
-  // reviewers, but guard the action too in case it's ever called directly.
-  if (!currentReviewer || currentReviewer.role !== 'org_wide') return;
-
-  var btn = document.getElementById('gradeBatchBtn');
-  var statusEl = document.getElementById('gradeBatchStatus');
-  if (btn) { btn.disabled = true; btn.textContent = 'Grading…'; }
-  if (statusEl) statusEl.textContent = 'Fetching next batch of ungraded notes…';
-
-  var { data: batch, error: fetchErr } = await sb
-    .from(TABLE)
-    .select('id, description_text, assessment_text, plan_text')
-    .is('compliance_graded_at', null)
-    .order('session_date', { ascending: true })
-    .limit(15);
-
-  if (fetchErr) {
-    if (statusEl) statusEl.textContent = 'Error fetching batch: ' + fetchErr.message;
-    if (btn) { btn.disabled = false; btn.textContent = 'Grade Next Batch'; }
-    return;
-  }
-
-  if (!batch || !batch.length) {
-    if (statusEl) statusEl.textContent = 'No ungraded notes remaining.';
-    if (btn) { btn.disabled = false; btn.textContent = 'Grade Next Batch'; }
-    return;
-  }
-
-  // Notes with no saved text can't be meaningfully graded by content --
-  // but blank documentation is itself a compliance issue, so mark them
-  // Non-Compliant directly rather than sending them to the API or
-  // leaving them stuck ungraded forever.
+// Grades one batch (array of {id, description_text, assessment_text, plan_text})
+// and writes results to Supabase. Returns { ok, updates: [{id, ...fields}], counts, blank, error }.
+async function gradeBatch(batch) {
+  var now = new Date().toISOString();
+  var updates = [];
+  var counts = { 'Compliant': 0, 'Needs Improvement': 0, 'Non-Compliant': 0 };
+  // Blank documentation is itself a compliance issue -- grade it directly
+  // instead of sending it to the API or leaving it stuck ungraded.
   var blank = batch.filter(function(n) { return !n.description_text && !n.assessment_text && !n.plan_text; });
   var gradable = batch.filter(function(n) { return n.description_text || n.assessment_text || n.plan_text; });
-
-  var now = new Date().toISOString();
   for (var i = 0; i < blank.length; i++) {
-    await sb.from(TABLE).update({
-      compliance_grade: 'Non-Compliant', compliance_score: 0,
-      compliance_issues: ['No note text was saved for this entry'],
-      compliance_graded_at: now
-    }).eq('id', blank[i].id);
+    var bf = { compliance_grade: 'Non-Compliant', compliance_score: 0, compliance_issues: ['No note text was saved for this entry'], compliance_graded_at: now };
+    var br = await sb.from(TABLE).update(bf).eq('id', blank[i].id);
+    if (!br.error) updates.push(Object.assign({ id: blank[i].id }, bf));
   }
-
-  if (!gradable.length) {
-    if (statusEl) statusEl.textContent = 'Graded ' + blank.length + ' note(s) with no saved text as Non-Compliant. Click again for the next batch.';
-    if (btn) { btn.disabled = false; btn.textContent = 'Grade Next Batch'; }
-    await loadAndRenderDashboard();
-    return;
-  }
-
-  if (statusEl) statusEl.textContent = 'Grading ' + gradable.length + ' note(s) against the UM framework…';
+  if (!gradable.length) return { ok: true, updates: updates, counts: counts, blank: blank.length };
 
   var payload = gradable.map(function(n) {
     return { id: n.id, description: n.description_text || '', assessment: n.assessment_text || '', plan: n.plan_text || '' };
   });
-
   try {
     var response = await fetch('/functions/claude', {
       method: 'POST',
@@ -799,46 +1345,131 @@ async function gradeNextBatch() {
     });
     var data = await response.json();
     if (!response.ok) throw new Error(data.error || 'API error');
-
     var text = (data.content && data.content[0] && data.content[0].text) ? data.content[0].text : '';
-    var cleaned = text.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
-    var results = JSON.parse(cleaned);
-
-    var counts = { 'Compliant': 0, 'Needs Improvement': 0, 'Non-Compliant': 0 };
+    var results = JSON.parse(text.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim());
+    // Only accept ids we actually sent -- guards against a model echoing a wrong id.
+    var validIds = {};
+    gradable.forEach(function(n){ validIds[String(n.id)] = n.id; });
     for (var j = 0; j < results.length; j++) {
       var r = results[j];
-      if (!r.id || !r.grade) continue;
+      if (!r.id || !r.grade || !(String(r.id) in validIds)) continue;
       counts[r.grade] = (counts[r.grade] || 0) + 1;
-      await sb.from(TABLE).update({
-        compliance_grade: r.grade,
-        compliance_score: (typeof r.score === 'number') ? r.score : null,
-        compliance_issues: r.issues || [],
-        compliance_graded_at: now
-      }).eq('id', r.id);
+      var f = { compliance_grade: r.grade, compliance_score: (typeof r.score === 'number') ? r.score : null, compliance_issues: r.issues || [], compliance_graded_at: now };
+      var ur = await sb.from(TABLE).update(f).eq('id', validIds[String(r.id)]);
+      if (!ur.error) updates.push(Object.assign({ id: validIds[String(r.id)] }, f));
     }
-
-    if (statusEl) {
-      statusEl.textContent = 'Graded ' + results.length + ' note(s): ' + counts['Compliant'] + ' compliant, '
-        + counts['Needs Improvement'] + ' needs improvement, ' + counts['Non-Compliant'] + ' non-compliant.'
-        + (blank.length ? (' Plus ' + blank.length + ' with no saved text, marked Non-Compliant.') : '')
-        + ' Click again for the next batch.';
-    }
+    return { ok: true, updates: updates, counts: counts, blank: blank.length };
   } catch (e) {
-    if (statusEl) statusEl.textContent = 'Grading failed: ' + e.message + '. The blank-text notes above were still graded. Try again.';
     console.warn('[Compliance grading] failed', e);
+    return { ok: false, updates: updates, counts: counts, blank: blank.length, error: e };
   }
+}
 
-  if (btn) { btn.disabled = false; btn.textContent = 'Grade Next Batch'; }
+// Manual backfill (org-wide only): oldest ungraded notes across the whole
+// table. Day-to-day scanning of new notes happens automatically below.
+async function gradeNextBatch() {
+  if (!currentReviewer || currentReviewer.role !== 'org_wide') return;
+  var btn = document.getElementById('gradeBatchBtn');
+  var statusEl = document.getElementById('gradeBatchStatus');
+  if (btn) { btn.disabled = true; btn.textContent = 'Grading…'; }
+  if (statusEl) statusEl.textContent = 'Fetching the oldest ungraded notes…';
+
+  var { data: batch, error: fetchErr } = await sb.from(TABLE)
+    .select('id, description_text, assessment_text, plan_text')
+    .is('compliance_graded_at', null)
+    .order('session_date', { ascending: true })
+    .limit(15);
+  if (fetchErr || !batch || !batch.length) {
+    if (statusEl) statusEl.textContent = fetchErr ? ('Error fetching batch: ' + fetchErr.message) : 'No ungraded notes remaining.';
+    if (btn) { btn.disabled = false; btn.textContent = 'Backfill Oldest'; }
+    return;
+  }
+  var out = await gradeBatch(batch);
+  if (statusEl) {
+    statusEl.textContent = out.ok
+      ? ('Graded ' + out.updates.length + ' note(s): ' + out.counts['Compliant'] + ' compliant, ' + out.counts['Needs Improvement'] + ' needs improvement, ' + out.counts['Non-Compliant'] + ' non-compliant' + (out.blank ? (' (incl. ' + out.blank + ' with no saved text)') : '') + '. Click again for the next batch.')
+      : ('Grading failed: ' + out.error.message + '. Try again.');
+  }
+  if (btn) { btn.disabled = false; btn.textContent = 'Backfill Oldest'; }
   await loadAndRenderDashboard();
+}
+
+// ── AUTO-SCAN ──
+// When a reviewer opens the tracker, ungraded notes in their scope are
+// graded in the background, newest first, so new notes get scanned without
+// anyone clicking a button. Capped per page visit to keep API cost bounded.
+// (Long-term this belongs server-side -- see SETUP.md.)
+var AUTO_SCAN = { enabled: true, batchSize: 15, maxPerVisit: 150 };
+var autoScanRunning = false;
+var autoScanDone = 0;
+var autoScanNewlyFlagged = 0;
+var autoScanError = null;
+
+async function autoScanInBackground() {
+  if (!AUTO_SCAN.enabled || autoScanRunning || !currentReviewer) return;
+  autoScanRunning = true;
+  autoScanError = null;
+  updateScanStatus();
+  try {
+    while (autoScanDone < AUTO_SCAN.maxPerVisit) {
+      var q = scopeNotesQuery(sb.from(TABLE)
+        .select('id, description_text, assessment_text, plan_text')
+        .is('compliance_graded_at', null)
+        .order('session_date', { ascending: false })
+        .order('id', { ascending: false }));
+      if (!q) break;
+      var res = await q.limit(AUTO_SCAN.batchSize);
+      if (res.error) { autoScanError = res.error.message; break; }
+      if (!res.data || !res.data.length) break;
+      var out = await gradeBatch(res.data);
+      autoScanDone += res.data.length;
+      out.updates.forEach(function(u) {
+        var n = allNotes.find(function(x){ return x.id === u.id; });
+        if (!n) return;
+        var wasFlagged = noteHasAnyFlag(n);
+        Object.assign(n, u);
+        if (!wasFlagged && noteNeedsReview(n)) autoScanNewlyFlagged++;
+      });
+      var k = document.getElementById('kpiRow');
+      if (k) k.innerHTML = kpiRowHtml();
+      updateScanStatus();
+      if (!out.ok) { autoScanError = out.error && out.error.message; break; }
+    }
+  } finally {
+    autoScanRunning = false;
+    updateScanStatus();
+  }
+}
+
+function updateScanStatus() {
+  var el = document.getElementById('scanStatus');
+  if (!el) return;
+  var inView = allNotes.length;
+  var awaiting = allNotes.filter(function(n){ return !n.compliance_grade && !n.compliance_graded_at; }).length;
+  var parts = ['Documentation scan: ' + (inView - awaiting) + ' of ' + inView + ' notes in view scanned'];
+  if (autoScanRunning) parts.push('scanning newest notes now (' + autoScanDone + ' this visit)…');
+  else if (autoScanError) parts.push('scan paused: ' + escapeHtml(autoScanError));
+  else if (awaiting && autoScanDone >= AUTO_SCAN.maxPerVisit) parts.push(awaiting + ' still waiting; scanning continues on the next visit or Refresh');
+  var html = parts.join(' &middot; ');
+  if (autoScanNewlyFlagged) html += ' &middot; <a href="#" id="showNewlyFlagged">' + autoScanNewlyFlagged + ' newly flagged — update list</a>';
+  el.innerHTML = html;
+  var link = document.getElementById('showNewlyFlagged');
+  if (link) link.onclick = function(e){ e.preventDefault(); refreshNotesView(); };
 }
 
 function emailProvider(note) {
   var msgEl = document.getElementById('emailMsg_' + note.id);
   var msg = msgEl ? msgEl.value.trim() : '';
   var subject = 'Follow-up needed: ' + (note.client_number || 'note') + ' (' + (note.program || '') + ')';
-  var flagType = note.concern_flagged ? 'a concern flag' : 'an ITP flag';
+  var flagParts = [];
+  if (note.concern_flagged) flagParts.push('a self-reported concern flag');
+  if (note.itp_flagged) flagParts.push('an ITP flag');
+  if (note.ai_concern_flagged && !note.concern_flagged) flagParts.push('a possible safety concern in the narrative');
+  if (isDocQualityFlag(note)) flagParts.push('a documentation review grade of ' + note.compliance_grade);
+  if (noteSimilarity[note.id] && noteSimilarity[note.id].length) flagParts.push('language that closely matches another of your notes');
+  var flagLine = flagParts.length ? (', which has ' + flagParts.join(' and ')) : '';
   var dateStr = note.session_date ? new Date(note.session_date + 'T00:00:00').toLocaleDateString() : 'an unspecified date';
-  var reasonLine = note._rejectReason ? ('This note was reviewed and needs revision. Reason: ' + note._rejectReason + '\n\n') : '';
+  var reasonLine = note._rejectReason ? ('This note was reviewed and needs revision. What to fix: ' + note._rejectReason + '\n\n') : '';
 
   var noteTextBlock = '';
   if (note.description_text || note.assessment_text || note.plan_text) {
@@ -850,8 +1481,8 @@ function emailProvider(note) {
   }
 
   var body = 'Hi,\n\n'
-    + 'I was reviewing the flagged notes tracker and wanted to follow up on the note for client ' + (note.client_number || '(no client number)')
-    + ' in ' + (note.program || 'your program') + ', session date ' + dateStr + ', which has ' + flagType + '.\n\n'
+    + 'I was reviewing notes and wanted to follow up on the note for client ' + (note.client_number || '(no client number)')
+    + ' in ' + (note.program || 'your program') + ', session date ' + dateStr + flagLine + '.\n\n'
     + reasonLine + (msg ? (msg + '\n\n') : '')
     + noteTextBlock
     + 'Could you take another look at this note in Pimsy when you get a chance?\n\n'
@@ -879,18 +1510,38 @@ function renderNoteCard(note) {
   if (note.other_flags && note.other_flags.length) {
     note.other_flags.forEach(function(f){ badges += '<span class="badge badge-other">' + escapeHtml(f) + '</span>'; });
   }
+  var simMatches = noteSimilarity[note.id] || [];
+  if (simMatches.some(function(x){ return x.crossClient; })) badges += '<span class="badge badge-concern">Possible copy-paste between clients</span>';
+  if (simMatches.some(function(x){ return !x.crossClient; })) badges += '<span class="badge badge-itp">Repetitive language</span>';
+  if (isUnknownAuthor(note)) badges += '<span class="badge badge-concern">Unknown author</span>';
   if (note.director_escalated) badges += '<span class="badge badge-director-escalated">Escalated to Director</span>';
   if (note.escalated) badges += '<span class="badge badge-escalated">Escalated to Clinical</span>';
   if (note.compliance_grade === 'Non-Compliant') badges += '<span class="badge badge-concern">Non-Compliant</span>';
   else if (note.compliance_grade === 'Needs Improvement') badges += '<span class="badge badge-itp">Needs Improvement</span>';
   else if (note.compliance_grade === 'Compliant') badges += '<span class="badge badge-reviewed">Compliant</span>';
   if (note.reviewed && note.review_outcome === 'approved') badges += '<span class="badge badge-reviewed">Approved</span>';
-  if (note.reviewed && note.review_outcome === 'rejected') badges += '<span class="badge badge-rejected">Rejected</span>';
-  if (!badges) badges = '<span class="badge badge-other">No flags — routine note</span>';
+  if (note.reviewed && note.review_outcome === 'rejected') badges += '<span class="badge badge-rejected">Sent Back to Coach</span>';
+  if (note.ur_referred) badges += '<span class="badge badge-escalated">Utilization Review' + (note.ur_resolved ? ' \u2713' : '') + '</span>';
+  if (isAwaitingScan(note)) badges += '<span class="badge badge-other">Awaiting scan</span>';
+  if (!badges) badges = '<span class="badge badge-other">Scanned — routine note</span>';
+
+  var prompts = note.reviewed ? [] : reviewPrompts(note);
+  var promptsHtml = prompts.length
+    ? '<div class="review-prompts"><div class="rp-title">What to review</div>' + prompts.map(function(p){ return '<div class="rp-item rp-' + p.level + '">' + escapeHtml(p.text) + '</div>'; }).join('') + '</div>'
+    : '';
 
   var complianceIssuesHtml = '';
   if (note.compliance_issues && note.compliance_issues.length) {
     complianceIssuesHtml = '<div class="concern-types">' + note.compliance_issues.map(function(t){ return '<span>' + escapeHtml(t) + '</span>'; }).join('') + '</div>';
+  }
+
+  var similarHtml = '';
+  if (simMatches.length) {
+    var shown = simMatches.slice().sort(function(a, b){ return b.sim - a.sim; }).slice(0, 3);
+    similarHtml = '<div class="similar-list">' + shown.map(function(x) {
+      var d = x.date ? new Date(x.date + 'T00:00:00').toLocaleDateString() : '?';
+      return Math.round(x.sim * 100) + '% match with ' + (x.crossClient ? ('client ' + escapeHtml(x.client || '?') + '\u2019s note') : 'this client\u2019s note') + ' from ' + d;
+    }).join('<br/>') + (simMatches.length > 3 ? ('<br/>+' + (simMatches.length - 3) + ' more') : '') + '</div>';
   }
 
   var concernTypesHtml = '';
@@ -900,10 +1551,17 @@ function renderNoteCard(note) {
 
   var dateStr = note.session_date ? new Date(note.session_date + 'T00:00:00').toLocaleDateString() : '—';
   var codeLabel = note.linkage_code ? (' <span class="divider">&middot;</span> ' + escapeHtml(note.linkage_code)) : '';
-  var providerLine = note.provider_email ? ('PRS: ' + escapeHtml(note.provider_email) + '<br/>') : '';
+  var providerLine = note.provider_email ? ('PRS: ' + escapeHtml(note.provider_email) + ' <span class="divider">&middot;</span> Manager: ' + escapeHtml(managerFor(note.provider_email)) + '<br/>') : '';
 
   var reasonHtml = (note.review_outcome === 'rejected' && note.reject_reason)
-    ? '<div class="reject-reason-box">Reject reason: ' + escapeHtml(note.reject_reason) + '</div>' : '';
+    ? '<div class="reject-reason-box">What to fix: ' + escapeHtml(note.reject_reason) + '</div>' : '';
+  var urHtml = '';
+  if (note.ur_referred) {
+    urHtml = '<div class="escalated-tag">Referred to Utilization Review by ' + escapeHtml(note.ur_referred_by || '—') + (note.ur_referred_date ? (' on ' + new Date(note.ur_referred_date).toLocaleDateString()) : '') + (note.ur_reason ? ('<br/><span style="color:var(--ink-soft);font-weight:400;">' + escapeHtml(note.ur_reason) + '</span>') : '') + '</div>'
+      + (note.ur_resolved
+          ? '<div class="resolved-tag">UR complete \u2014 ' + escapeHtml(note.ur_resolved_by || '—') + (note.ur_outcome ? ('<br/><span style="color:var(--ink-soft);font-weight:400;">' + escapeHtml(note.ur_outcome) + '</span>') : '') + '</div>'
+          : '<button class="ack-btn" id="urDoneBtn_' + note.id + '" style="margin-top:6px;width:100%;">Mark UR Complete</button>');
+  }
   var directorEscalatedHtml = note.director_escalated
     ? '<div class="escalated-tag director">Escalated to Director' + (note.director_escalated_to ? (' (' + escapeHtml(note.director_escalated_to) + ')') : '') + ' by ' + escapeHtml(note.director_escalated_by || '—') + (note.director_escalated_date ? (' on ' + new Date(note.director_escalated_date).toLocaleDateString()) : '') + '</div>'
     : '';
@@ -914,7 +1572,7 @@ function renderNoteCard(note) {
       : '<button class="ack-btn" id="ackDirectorBtn_' + note.id + '" style="margin-top:6px;width:100%;">Acknowledge</button>';
   }
   var escalatedNoteHtml = note.escalated
-    ? '<div class="escalated-tag">Sent to Clinical Director Hub by ' + escapeHtml(note.escalated_by || '—') + (note.escalated_date ? (' on ' + new Date(note.escalated_date).toLocaleDateString()) : '') + '</div>'
+    ? '<div class="escalated-tag">Escalated to Clinical Director by ' + escapeHtml(note.escalated_by || '—') + (note.escalated_date ? (' on ' + new Date(note.escalated_date).toLocaleDateString()) : '') + '</div>'
       + (note.resolved
           ? '<div class="resolved-tag">Resolved in Clinical Director Hub by ' + escapeHtml(note.resolved_by || '—') + (note.resolved_date ? (' on ' + new Date(note.resolved_date).toLocaleDateString()) : '') + (note.resolution_notes ? ('<br/><span style="color:var(--ink-soft);font-weight:400;">' + escapeHtml(note.resolution_notes) + '</span>') : '') + '</div>'
           : '<div class="escalated-tag" style="color:var(--muted);font-weight:500;">Awaiting review in Clinical Director Hub</div>')
@@ -922,15 +1580,16 @@ function renderNoteCard(note) {
 
   var actionsHtml;
   if (note.reviewed) {
-    actionsHtml = '<div class="reviewed-note">' + (note.review_outcome === 'rejected' ? 'Rejected' : 'Approved') + ' by ' + escapeHtml(note.reviewed_by || '—')
-      + '<br/>' + (note.reviewed_date ? new Date(note.reviewed_date).toLocaleString() : '') + '</div>' + reasonHtml + directorEscalatedHtml + directorAckHtml;
+    actionsHtml = '<div class="reviewed-note">' + (note.review_outcome === 'rejected' ? 'Sent back to coach' : 'Approved') + ' by ' + escapeHtml(note.reviewed_by || '—')
+      + '<br/>' + (note.reviewed_date ? new Date(note.reviewed_date).toLocaleString() : '') + '</div>' + reasonHtml + directorEscalatedHtml + directorAckHtml + escalatedNoteHtml + urHtml;
   } else {
     actionsHtml = '<div class="action-row">'
       + '<button class="action-btn approve" id="approveBtn_' + note.id + '">Approve</button>'
-      + '<button class="action-btn reject" id="rejectBtn_' + note.id + '">Reject</button>'
+      + '<button class="action-btn reject" id="rejectBtn_' + note.id + '">Send Back to Coach</button>'
       + (note.director_escalated ? '' : '<button class="action-btn escalate" id="escalateDirectorBtn_' + note.id + '">Escalate to Director</button>')
-      + (note.escalated ? '' : '<button class="action-btn escalate" id="escalateClinicalBtn_' + note.id + '">Escalate to Clinical</button>')
-      + '</div>' + directorEscalatedHtml + directorAckHtml + escalatedNoteHtml;
+      + (note.escalated ? '' : '<button class="action-btn escalate" id="escalateClinicalBtn_' + note.id + '">Escalate to Clinical Director</button>')
+      + (note.ur_referred ? '' : '<button class="action-btn escalate" id="urBtn_' + note.id + '">Refer to Utilization Review</button>')
+      + '</div>' + directorEscalatedHtml + directorAckHtml + escalatedNoteHtml + urHtml;
   }
 
   var hasNoteText = note.description_text || note.assessment_text || note.plan_text;
@@ -979,6 +1638,8 @@ function renderNoteCard(note) {
           <div class="badge-row">${badges}</div>
           ${concernTypesHtml}
           ${complianceIssuesHtml}
+          ${similarHtml}
+          ${promptsHtml}
           <button class="collapse-toggle" id="collapseToggle_${note.id}" style="display:block;margin-top:10px;">Show note &amp; provider contact</button>
         </div>
         <div class="note-actions">${actionsHtml}</div>
@@ -1351,14 +2012,18 @@ async function loadLeadershipDashboard() {
   function buildLeadershipNotesQuery() {
     return scopeNotesQuery(sb
       .from(TABLE)
-      .select('id, client_number, session_date, provider_email, program, note_type, session_length, concern_flagged, itp_flagged, ai_concern_flagged, escalated, escalated_date, resolved, resolved_date, compliance_grade')
+      .select('id, client_number, session_date, provider_email, program, note_type, session_length, concern_flagged, itp_flagged, ai_concern_flagged, escalated, escalated_date, resolved, resolved_date, compliance_grade, compliance_issues')
       .gte('session_date', sinceStr)
       .order('session_date', { ascending: true })
       .order('id', { ascending: true }));
   }
 
+  var coachSince = new Date();
+  coachSince.setDate(coachSince.getDate() - COACHING.windowDays);
+  var coachSinceStr = coachSince.toISOString().slice(0, 10);
+
   if (!buildLeadershipNotesQuery()) {
-    renderLeadershipDashboard([], [], utilSinceStr);
+    renderLeadershipDashboard([], [], utilSinceStr, {}, {}, coachSinceStr);
     return;
   }
 
@@ -1402,7 +2067,21 @@ async function loadLeadershipDashboard() {
     sliHistoryByClient[r.client_number].push(r);
   });
 
-  renderLeadershipDashboard(notesRes.data || [], sliRows, utilSinceStr, sliHistoryByClient);
+  // Provider Scorecard needs note text for the repetitive-language check, but
+  // only for its own 90-day window -- pulling 9 months of narrative text just
+  // for this would be wasteful. Degrades to "no similarity data" on error.
+  var simMap = {};
+  var textRes = await fetchAllRows(function(from, to) {
+    return scopeNotesQuery(sb.from(TABLE)
+      .select('id, provider_email, client_number, session_date, note_type, description_text, assessment_text, plan_text')
+      .gte('session_date', coachSinceStr)
+      .order('session_date', { ascending: true })
+      .order('id', { ascending: true })).range(from, to);
+  });
+  if (textRes.error) console.warn('Could not load note text for repetitive-language check', textRes.error);
+  else simMap = computeNoteSimilarity(textRes.data || []);
+
+  renderLeadershipDashboard(notesRes.data || [], sliRows, utilSinceStr, sliHistoryByClient, simMap, coachSinceStr);
 }
 
 function monthKey(dateStr) {
@@ -1433,22 +2112,79 @@ function computeMonthlyTrend(notes) {
   });
 }
 
-function computeProviderScorecard(notes) {
+// Provider Coaching Scorecard. "Flagged" = the note has at least one
+// coaching flag (see noteCoachingFlags): documentation grade, repetitive
+// language, possible copy-paste, or an AI-caught safety concern the PRS
+// didn't self-report. Self-reported concerns and ITP flags are counted
+// separately and never count against a provider.
+function computeProviderScorecard(notes, simMap) {
   var byProvider = {};
   notes.forEach(function(n) {
     var key = n.provider_email || '(no provider email on file)';
-    if (!byProvider[key]) byProvider[key] = { total: 0, anyFlag: 0, aiOnly: 0, escalated: 0, unresolvedEsc: 0 };
+    if (!byProvider[key]) byProvider[key] = { total: 0, flagged: 0, aiOnly: 0, selfConcern: 0, itp: 0, graded: 0, docFlag: 0, repetitive: 0, crossClient: 0, escalated: 0, unresolvedEsc: 0, themes: {} };
     var p = byProvider[key];
+    var flags = noteCoachingFlags(n, simMap);
     p.total++;
-    if (n.concern_flagged || n.itp_flagged || n.ai_concern_flagged) p.anyFlag++;
-    if (n.ai_concern_flagged && !n.concern_flagged) p.aiOnly++;
+    if (flags.length) p.flagged++;
+    if (n.compliance_grade) p.graded++;
+    if (flags.indexOf('doc_quality') >= 0) {
+      p.docFlag++;
+      var issues = n.compliance_issues || [];
+      if (!issues.length) p.themes.other = (p.themes.other || 0) + 1;
+      // Count each theme once per note so one long issue list doesn't dominate.
+      var seen = {};
+      issues.forEach(function(i){ seen[issueTheme(i)] = true; });
+      Object.keys(seen).forEach(function(t){ p.themes[t] = (p.themes[t] || 0) + 1; });
+    }
+    ['repetitive', 'cross_client', 'ai_only'].forEach(function(t){ if (flags.indexOf(t) >= 0) p.themes[t] = (p.themes[t] || 0) + 1; });
+    if (flags.indexOf('repetitive') >= 0) p.repetitive++;
+    if (flags.indexOf('cross_client') >= 0) p.crossClient++;
+    if (flags.indexOf('ai_only') >= 0) p.aiOnly++;
+    if (n.concern_flagged) p.selfConcern++;
+    if (n.itp_flagged) p.itp++;
     if (n.escalated) p.escalated++;
     if (n.escalated && !n.resolved) p.unresolvedEsc++;
   });
   return Object.keys(byProvider).map(function(k) {
     var p = byProvider[k];
-    return Object.assign({ provider: k, flagRate: p.total ? (p.anyFlag / p.total) : 0 }, p);
-  }).sort(function(a, b) { return b.flagRate - a.flagRate; });
+    var reasons = [];
+    if (p.total >= COACHING.minNotes) {
+      if (p.graded >= COACHING.minGraded && (p.docFlag / p.graded) >= COACHING.docRate)
+        reasons.push(p.docFlag + ' of ' + p.graded + ' graded notes need improvement');
+      if ((p.repetitive / p.total) >= COACHING.repeatRate)
+        reasons.push(p.repetitive + ' of ' + p.total + ' notes repeat earlier language for the same client');
+      if (p.aiOnly >= COACHING.aiOnlyMin)
+        reasons.push(p.aiOnly + ' safety concerns not self-reported');
+    }
+    // Copy-paste across clients is worth a look even on a small caseload.
+    if (p.crossClient >= COACHING.crossClientMin)
+      reasons.push(p.crossClient + ' note' + (p.crossClient === 1 ? '' : 's') + ' closely match another client’s note');
+    return Object.assign({ provider: k, manager: managerFor(k === '(no provider email on file)' ? null : k), flagRate: p.total ? (p.flagged / p.total) : 0, reasons: reasons, focus: topThemes(p.themes, 2) }, p);
+  }).sort(function(a, b) { return (b.reasons.length - a.reasons.length) || (b.flagRate - a.flagRate); });
+}
+
+// Team-level view: is a theme showing up across several of one manager's
+// providers? That points at team training/manager support rather than one PRS.
+function computeManagerRollup(scorecard) {
+  var byMgr = {};
+  scorecard.forEach(function(p) {
+    var m = byMgr[p.manager] = byMgr[p.manager] || { manager: p.manager, providers: 0, total: 0, flagged: 0, needsSupport: 0, themeProviders: {} };
+    m.providers++;
+    m.total += p.total;
+    m.flagged += p.flagged;
+    if (p.reasons.length) m.needsSupport++;
+    Object.keys(p.themes).forEach(function(t) {
+      if (t !== 'other' && p.themes[t] >= 2) m.themeProviders[t] = (m.themeProviders[t] || 0) + 1;
+    });
+  });
+  return Object.keys(byMgr).map(function(k) {
+    var m = byMgr[k];
+    m.flagRate = m.total ? m.flagged / m.total : 0;
+    m.teamPatterns = Object.keys(m.themeProviders).filter(function(t) {
+      return m.themeProviders[t] >= 2 && (m.themeProviders[t] / m.providers) >= COACHING.teamShare;
+    }).sort(function(a, b){ return m.themeProviders[b] - m.themeProviders[a]; });
+    return m;
+  }).sort(function(a, b){ return (b.teamPatterns.length - a.teamPatterns.length) || (b.flagRate - a.flagRate); });
 }
 
 function computeEscalationStats(notes) {
@@ -1512,30 +2248,113 @@ function renderMonthlyTrendHtml(trend) {
   `;
 }
 
-function renderProviderScorecardHtml(scorecard) {
-  if (!scorecard.length) return '<p class="empty-state"><p>No notes in this window.</p></p>';
-  var rows = scorecard.map(function(p) {
-    var isHighRisk = p.total >= 5 && p.flagRate >= 0.25;
+function renderFlagExplainerHtml() {
+  var pct = function(x){ return Math.round(x * 100) + '%'; };
+  return `
+    <details class="flag-explainer">
+      <summary>How flags work on this scorecard</summary>
+      <p style="margin-top:8px;">A <strong>flag</strong> here means a documentation pattern worth a coaching conversation &mdash; not that the PRS reported something. A note is flagged if any of these are true:</p>
+      <ul>
+        <li><strong>Documentation grade</strong> &mdash; graded Needs Improvement or Non-Compliant against the five UM standards (individualization, goal link to the treatment plan, scope, progress/skill-building, forward plan).</li>
+        <li><strong>Repetitive language</strong> &mdash; ${pct(SIM_THRESHOLD)}+ of the note's phrasing matches another note for the <em>same client</em> within ${SIM_WINDOW_DAYS} days (whole note, or Assessment + Plan alone).</li>
+        <li><strong>Possible copy-paste</strong> &mdash; the same match, but against a note for a <em>different client</em>.</li>
+        <li><strong>Safety concern not self-reported</strong> &mdash; the AI scan found a possible risk in the narrative but the PRS didn't toggle the concern flag.</li>
+      </ul>
+      <p><strong>Not counted as flags:</strong> self-reported concerns and ITP-update flags. Those mean the PRS is doing their job; they're shown in the Self-Rep. / ITP columns and the Safety Trend tab.</p>
+      <p><strong>Red row (coaching indicator)</strong> &mdash; any one of: ${pct(COACHING.docRate)}+ of graded notes need improvement (min ${COACHING.minGraded} graded); ${pct(COACHING.repeatRate)}+ of notes repetitive; ${COACHING.aiOnlyMin}+ safety concerns not self-reported; or ${COACHING.crossClientMin}+ possible copy-paste between clients. All but copy-paste need ${COACHING.minNotes}+ notes, since small counts produce noisy rates. The reason is listed under the provider's name.</p>
+      <p><strong>Team pattern</strong> &mdash; the same theme shows up 2+ times for each of at least 2 providers, covering ${pct(COACHING.teamShare)}+ of that manager's team. That usually points at team training or manager support, not one person.</p>
+      <p style="color:var(--muted);">Thresholds are a starting point and can be tuned. Documentation flags depend on grading having been run on these notes &mdash; the Graded column shows coverage.</p>
+    </details>
+  `;
+}
+
+function renderManagerRollupHtml(rollup) {
+  if (!rollup.length) return '';
+  var rows = rollup.map(function(m) {
+    var patterns = m.teamPatterns.length
+      ? m.teamPatterns.map(function(t){ return '<span class="team-pattern">' + escapeHtml(COACHING_THEMES[t]) + ' (' + m.themeProviders[t] + ' of ' + m.providers + ')</span>'; }).join('')
+      : '<span style="color:var(--muted)">&mdash;</span>';
     return `
-      <tr class="${isHighRisk ? 'high-risk' : ''}">
-        <td>${escapeHtml(p.provider)}</td>
-        <td class="num">${p.total}</td>
-        <td class="num">${p.anyFlag}</td>
-        <td class="num">${(p.flagRate * 100).toFixed(0)}%</td>
-        <td class="num">${p.aiOnly}</td>
-        <td class="num">${p.escalated}${p.unresolvedEsc ? (' <span style="color:var(--bad)">(' + p.unresolvedEsc + ' open)</span>') : ''}</td>
+      <tr>
+        <td>${escapeHtml(m.manager)}</td>
+        <td class="num">${m.providers}</td>
+        <td class="num">${m.total}</td>
+        <td class="num">${m.flagged}</td>
+        <td class="num">${(m.flagRate * 100).toFixed(0)}%</td>
+        <td class="num">${m.needsSupport}</td>
+        <td>${patterns}</td>
       </tr>
     `;
   }).join('');
   return `
-    <table class="lead-table">
-      <thead><tr>
-        <th>Provider</th><th>Notes</th><th>Flagged</th><th>Flag Rate</th><th>AI-Only</th><th>Escalated</th>
-      </tr></thead>
+    <div class="lead-section-title" style="font-size:15px;margin-top:4px;">By Manager</div>
+    <div class="lead-section-sub">Team-wide patterns suggest a training or supervision opportunity at the manager level.</div>
+    <div class="table-scroll"><table class="lead-table" style="margin-bottom:24px;">
+      <thead><tr><th>Manager</th><th>Providers</th><th>Notes</th><th>Flagged</th><th>Flag Rate</th><th>Need Support</th><th>Team Patterns</th></tr></thead>
       <tbody>${rows}</tbody>
-    </table>
-    <div class="lead-section-sub" style="margin-top:10px;">Rows highlighted in red: 5+ notes and a 25%+ flag rate &mdash; a threshold to start a conversation with, not a verdict. Small note counts naturally produce noisy rates.</div>
+    </table></div>
   `;
+}
+
+function renderProviderScorecardHtml(scorecard) {
+  if (!scorecard.length) return renderFlagExplainerHtml() + '<p class="lead-note">No notes in this window.</p>';
+  var managers = {};
+  scorecard.forEach(function(p){ managers[p.manager] = true; });
+  var managerNames = Object.keys(managers).sort();
+  if (scorecardManagerFilter !== 'all' && !managers[scorecardManagerFilter]) scorecardManagerFilter = 'all';
+  var visible = scorecard.filter(function(p){ return scorecardManagerFilter === 'all' || p.manager === scorecardManagerFilter; });
+
+  var toolbar = managerNames.length > 1 ? `
+    <div class="scorecard-toolbar">
+      <label for="scorecardManagerSelect">Manager</label>
+      <select class="range-select" id="scorecardManagerSelect">
+        <option value="all">All managers</option>
+        ${managerNames.map(function(m){ return '<option value="' + escapeHtml(m) + '"' + (m === scorecardManagerFilter ? ' selected' : '') + '>' + escapeHtml(m) + '</option>'; }).join('')}
+      </select>
+    </div>` : '';
+
+  var rows = visible.map(function(p) {
+    var isHighRisk = p.reasons.length > 0;
+    var focus = p.focus.length ? p.focus.map(function(t){ return escapeHtml(COACHING_THEMES[t]) + ' (' + p.themes[t] + ')'; }).join('<br/>') : '<span style="color:var(--muted)">&mdash;</span>';
+    var canDrill = p.provider !== '(no provider email on file)';
+    return `
+      <tr class="${isHighRisk ? 'high-risk' : ''}${canDrill ? ' clickable' : ''}" ${canDrill ? 'data-provider="' + escapeHtml(p.provider) + '" title="View all of this provider’s notes in Note Review"' : ''}>
+        <td class="provider-cell">${escapeHtml(p.provider)}${isHighRisk ? '<div class="reason-list">' + p.reasons.map(escapeHtml).join('<br/>') + '</div>' : ''}</td>
+        <td>${escapeHtml(p.manager)}</td>
+        <td class="num">${p.total}</td>
+        <td class="num">${p.flagged}</td>
+        <td class="num">${(p.flagRate * 100).toFixed(0)}%</td>
+        <td class="num">${p.aiOnly}</td>
+        <td class="num">${p.repetitive + p.crossClient}</td>
+        <td class="num" title="Notes graded / total">${p.graded}/${p.total}</td>
+        <td class="num">${p.selfConcern} / ${p.itp}</td>
+        <td class="num">${p.escalated}${p.unresolvedEsc ? (' <span style="color:var(--bad)">(' + p.unresolvedEsc + ' open)</span>') : ''}</td>
+        <td class="focus-cell">${focus}</td>
+        <td>${canDrill ? '<span class="view-link">View notes &rarr;</span>' : ''}</td>
+      </tr>
+    `;
+  }).join('');
+
+  return renderFlagExplainerHtml() + toolbar
+    + renderManagerRollupHtml(computeManagerRollup(visible))
+    + `
+    <div class="lead-section-title" style="font-size:15px;">By Provider</div>
+    <div class="lead-section-sub">Click any row to open all of that provider’s notes &mdash; flagged and routine &mdash; in Note Review.</div>
+    <div class="table-scroll"><table class="lead-table compact">
+      <thead><tr>
+        <th>Provider</th><th>Manager</th><th>Notes</th><th>Flagged</th><th>Flag Rate</th><th>AI-Only</th><th title="Repetitive language + possible copy-paste between clients">Repetitive</th><th>Graded</th><th title="Self-reported concerns / ITP-update flags. Informational, not counted as flags.">Self-Rep/ITP</th><th>Escalated</th><th>Coaching Focus</th><th></th>
+      </tr></thead>
+      <tbody>${rows || '<tr><td colspan="12" style="color:var(--muted)">No providers for this manager in this window.</td></tr>'}</tbody>
+    </table></div>
+  `;
+}
+
+function bindProviderScorecard() {
+  var sel = document.getElementById('scorecardManagerSelect');
+  if (sel) sel.onchange = function(){ scorecardManagerFilter = sel.value; renderLeadershipSubContent(); };
+  document.querySelectorAll('#leadSubContent tr[data-provider]').forEach(function(tr) {
+    tr.onclick = function(){ drillIntoProvider(tr.getAttribute('data-provider')); };
+  });
 }
 
 function renderEscalationAgingHtml(stats) {
@@ -1778,11 +2597,12 @@ function renderUtilizationHtml(rows) {
 var leadershipSubTab = 'utilization';
 var leadershipData = null; // cached computed sections so switching sub-tabs doesn't recompute
 
-function renderLeadershipDashboard(notes, sliRows, utilSinceStr, sliHistoryByClient) {
+function renderLeadershipDashboard(notes, sliRows, utilSinceStr, sliHistoryByClient, simMap, coachSinceStr) {
   var container = document.getElementById('leadershipMode');
+  var coachingNotes = coachSinceStr ? notes.filter(function(n){ return n.session_date && n.session_date >= coachSinceStr; }) : notes;
   leadershipData = {
     trend: computeMonthlyTrend(notes),
-    scorecard: computeProviderScorecard(notes),
+    scorecard: computeProviderScorecard(coachingNotes, simMap || {}),
     escStats: computeEscalationStats(notes),
     compliance: computeComplianceRollup(notes),
     utilization: computeUtilization(notes, sliRows || [], utilSinceStr, sliHistoryByClient || {})
@@ -1790,6 +2610,7 @@ function renderLeadershipDashboard(notes, sliRows, utilSinceStr, sliHistoryByCli
 
   var openEscCount = (leadershipData.escStats.totalOpen || 0);
   var utilFlagCount = leadershipData.utilization.filter(function(r){ return r.status === 'not_engaged' || r.status === 'under' || r.status === 'over'; }).length;
+  var providerSupportCount = leadershipData.scorecard.filter(function(p){ return p.reasons.length; }).length;
   var complianceFlagCount = notes.filter(function(n){ return n.compliance_grade === 'Needs Improvement' || n.compliance_grade === 'Non-Compliant'; }).length;
 
   container.innerHTML = `
@@ -1798,7 +2619,7 @@ function renderLeadershipDashboard(notes, sliRows, utilSinceStr, sliHistoryByCli
       <div class="mode-tab lead-sub-tab" data-leadtab="safety">Safety Trend</div>
       <div class="mode-tab lead-sub-tab" data-leadtab="escalations">Escalations${openEscCount ? ' <span class="count">' + openEscCount + '</span>' : ''}</div>
       <div class="mode-tab lead-sub-tab" data-leadtab="compliance">Compliance${complianceFlagCount ? ' <span class="count">' + complianceFlagCount + '</span>' : ''}</div>
-      <div class="mode-tab lead-sub-tab" data-leadtab="providers">Provider Scorecard</div>
+      <div class="mode-tab lead-sub-tab" data-leadtab="providers">Provider Coaching${providerSupportCount ? ' <span class="count">' + providerSupportCount + '</span>' : ''}</div>
     </div>
     <div id="leadSubContent"></div>
   `;
@@ -1858,13 +2679,14 @@ function renderLeadershipSubContent() {
   } else if (leadershipSubTab === 'providers') {
     html = `
       <div class="lead-section">
-        <div class="lead-section-title">Provider Scorecard</div>
-        <div class="lead-section-sub">Flag rate and escalation history by PRS, last ${LEADERSHIP_MONTHS_BACK} months. Meant as a supervision lens &mdash; who needs support, not a scoreboard.</div>
+        <div class="lead-section-title">Provider Coaching Scorecard</div>
+        <div class="lead-section-sub">Last ${COACHING.windowDays} days. A supervision and coaching lens &mdash; where a PRS or a whole team could use support with documentation &mdash; not a compliance scoreboard.</div>
         ${renderProviderScorecardHtml(d.scorecard)}
       </div>
     `;
   }
   el.innerHTML = html;
+  if (leadershipSubTab === 'providers') bindProviderScorecard();
 }
 
 // ── INIT ──
