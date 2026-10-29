@@ -1611,9 +1611,10 @@ async function completeUtilizationReview(note) {
 // Scores every note -- not just self-flagged or AI-safety-flagged
 // ones -- against the UM/documentation framework standards. This is
 // what closes the gap where a note with poor documentation but no
-// safety concern would otherwise never surface to anyone. Runs in
-// batches of 15 on a button click, not automatically/silently, so
-// leadership can watch it work and control the pace/cost.
+// safety concern would otherwise never surface to anyone. Grading runs
+// three ways: the scheduled grade-notes job (pg_cron) does the bulk,
+// AUTO_SCAN below catches up the signed-in reviewer's own scope, and
+// org-wide reviewers can click "Grade oldest 25 now" for backfill.
 // ══════════════════════════════════════════════════════════════════
 
 // The grading rubric lives in the grade-notes Edge Function (edge/grade-notes/index.ts).
