@@ -215,6 +215,115 @@ body{font-family:'IBM Plex Sans',system-ui,sans-serif;background:var(--bg);color
 .similar-list{font-size:11.5px;color:var(--warn);margin-top:6px;line-height:1.5;}
 .table-scroll{overflow-x:auto;}
 .handled-toggle{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:var(--ink-soft);display:inline-flex;align-items:center;gap:5px;padding:0 8px;cursor:pointer;}
+.nc .nc-head{padding:14px 20px 4px;display:flex;justify-content:space-between;gap:12px;align-items:flex-start;}
+.nc-title{font-size:14px;color:var(--ink);display:flex;align-items:center;flex-wrap:wrap;gap:0;}
+.nc-title .client{font-weight:700;font-family:'IBM Plex Mono',monospace;font-size:14px;}
+.nc-dot{color:var(--muted);margin:0 8px;}
+.nc-sub{font-size:12px;color:var(--muted);margin-top:3px;}
+.nc-status{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;}
+.nc-why{padding:6px 20px 0;display:flex;gap:6px;flex-wrap:wrap;}
+.why-chip{font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;}
+.why-risk{background:var(--bad-bg);color:var(--bad);}
+.why-warn{background:var(--warn-bg);color:var(--warn);}
+.why-info{background:#e8ebf6;color:var(--thrive-blue);}
+.why-ok{background:var(--bg);color:var(--muted);}
+.nc-actions{padding:12px 20px 14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.nc-btn{font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;font-weight:600;padding:7px 14px;border-radius:var(--radius-sm);cursor:pointer;border:1.5px solid transparent;background:none;white-space:nowrap;list-style:none;}
+.nc-btn.approve{background:var(--good);color:#fff;}
+.nc-btn.approve:hover{background:#246623;}
+.nc-btn.send{border-color:#e6b8cf;color:var(--bad);background:var(--paper);}
+.nc-btn.send:hover{background:var(--bad-bg);}
+.nc-btn.ghost{border-color:var(--rule-strong);color:var(--ink-soft);background:var(--paper);}
+.nc-btn.ghost:hover{border-color:var(--thrive-blue);color:var(--thrive-blue);}
+.nc-btn.link{color:var(--thrive-blue);margin-left:auto;padding-right:0;}
+.nc-btn.link:hover{text-decoration:underline;}
+.nc-btn:disabled{opacity:.5;cursor:not-allowed;}
+.nc-menu{position:relative;}
+.nc-menu summary::-webkit-details-marker{display:none;}
+.nc-menu-pop{position:absolute;z-index:20;top:calc(100% + 4px);left:0;background:var(--paper);border:1px solid var(--rule-strong);border-radius:var(--radius-sm);box-shadow:0 6px 18px rgba(26,40,97,.12);min-width:200px;padding:4px;}
+.nc-menu-item{display:block;width:100%;text-align:left;background:none;border:none;padding:8px 12px;font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--ink);cursor:pointer;border-radius:4px;}
+.nc-menu-item:hover{background:var(--bg);color:var(--esc);}
+.nc-details{border-top:1px solid var(--rule);padding:16px 20px;}
+.nc-section{margin-bottom:14px;}
+.nc-label{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-soft);margin-bottom:6px;}
+.nc-score{text-transform:none;letter-spacing:0;font-weight:500;color:var(--muted);margin-left:6px;}
+.nc-list{margin:0 0 0 18px;font-size:13px;line-height:1.55;color:var(--ink);}
+.nc-list li{margin-bottom:4px;}
+.nc-list li.rp-risk::marker,.nc-list li.rp-integrity::marker{color:var(--bad);}
+.nc-plain{font-size:13px;color:var(--ink);}
+.nc-note{background:var(--paper);border:1px solid var(--rule);border-radius:var(--radius-sm);padding:12px 14px;}
+.nc-note-h{font-size:11px;font-weight:700;color:var(--ink-soft);margin-top:8px;}
+.nc-note-h:first-child{margin-top:0;}
+.nc-note p{font-size:13.5px;line-height:1.6;white-space:pre-wrap;margin:2px 0 0;border:none;background:none;padding:0;box-shadow:none;}
+.nc-textarea{width:100%;min-height:60px;border:1.5px solid var(--rule-strong);border-radius:var(--radius-sm);padding:8px 10px;font-family:inherit;font-size:13px;margin-bottom:8px;}
+@media (max-width:640px){.nc-btn.link{margin-left:0;}.nc .nc-head{flex-direction:column;}.nc-status{justify-content:flex-start;}}
+
+/* ── 10/29 usability pass ── */
+.kpi-row.kpi-compact{grid-template-columns:repeat(auto-fit,minmax(200px,1fr));margin-bottom:16px;}
+.kpi-compact .kpi{padding:12px 16px;}
+.kpi-compact .kpi .val{font-size:24px;}
+.fb{flex-direction:column;align-items:stretch;gap:6px;padding:8px;}
+.fb-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.fb-tabs{display:contents;}
+.fb-search{flex:1 1 220px;max-width:320px;padding:8px 12px;border:1.5px solid var(--rule-strong);border-radius:var(--radius-sm);font-family:inherit;font-size:13px;background:var(--paper);color:var(--ink);}
+.fb-search:focus{outline:none;border-color:var(--thrive-blue);}
+.fb-btn{padding:8px 12px;border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;font-weight:600;border:1.5px solid var(--rule-strong);background:var(--paper);color:var(--ink-soft);cursor:pointer;}
+.fb-btn:hover{border-color:var(--thrive-blue);color:var(--thrive-blue);}
+.fb-btn.icon{font-size:15px;padding:5px 10px;}
+.fb-synced{font-size:11px;color:var(--muted);white-space:nowrap;}
+.fb-more{padding-top:6px;border-top:1px dashed var(--rule);}
+.qcount{margin-left:5px;color:var(--bad);font-weight:700;}
+.filter-tab.active .qcount{color:var(--thrive-yellow);}
+.scan-status{font-family:'IBM Plex Sans',sans-serif;font-size:12px;color:var(--ink-soft);background:var(--paper);border:1px solid var(--rule);border-radius:var(--radius-sm);padding:7px 12px;margin:-6px 0 12px;}
+.list-count{font-family:'IBM Plex Sans',sans-serif;font-size:12px;}
+/* coach groups */
+.cg{background:var(--paper);border:1px solid var(--rule);border-radius:var(--radius);margin-bottom:10px;box-shadow:var(--shadow);overflow:visible;}
+.cg-head{display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer;}
+.cg-head:hover{background:var(--bg);}
+.cg-name{font-weight:600;font-size:14px;color:var(--ink);min-width:180px;}
+.cg-mgr{display:block;font-weight:400;font-size:11.5px;color:var(--muted);}
+.cg-chips{display:flex;gap:6px;flex-wrap:wrap;flex:1;}
+.cg-count{font-size:12.5px;color:var(--ink-soft);white-space:nowrap;}
+.cg-caret{color:var(--thrive-blue);margin-left:4px;}
+.cg-body{padding:4px 12px 2px;border-top:1px solid var(--rule);background:var(--bg);}
+.cg-body .note-card{margin:10px 0;}
+.cg-check,.nc-check{width:16px;height:16px;cursor:pointer;accent-color:var(--thrive-blue);flex-shrink:0;}
+.nc .nc-head{align-items:flex-start;}
+.nc .nc-head .nc-check{margin-top:2px;}
+.nc-main{flex:1;min-width:0;}
+.nc-leaving{opacity:0;transform:translateX(12px);transition:opacity .2s, transform .2s;}
+/* bulk bar + toast */
+#bulkBar,#toast{position:fixed;left:50%;transform:translate(-50%,200%);visibility:hidden;bottom:18px;background:var(--ink);color:#fff;border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:12px;font-size:13.5px;box-shadow:0 8px 24px rgba(0,0,0,.25);transition:transform .2s;z-index:50;}
+#bulkBar.show,#toast.show{transform:translate(-50%,0);visibility:visible;}
+#toast{bottom:76px;}
+#bulkBar button,#toast button{font-family:inherit;font-size:13px;font-weight:600;border-radius:6px;padding:6px 12px;cursor:pointer;border:none;background:var(--thrive-yellow);color:var(--thrive-blue-dark);}
+#bulkBar button.ghost{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);}
+#toast button{background:transparent;color:var(--thrive-yellow);text-decoration:underline;padding:0 4px;}
+/* phones */
+@media (max-width:640px){
+  .content{padding-left:12px;padding-right:12px;}
+  .mode-toggle{overflow-x:auto;flex-wrap:nowrap;}
+  .mode-tab{white-space:nowrap;padding:9px 12px;font-size:11px;}
+  .fb-search{max-width:none;flex-basis:100%;}
+  .fb-tabs:not([style*="none"]){display:flex !important;overflow-x:auto;flex-wrap:nowrap;width:100%;}
+  .fb, .fb *{box-sizing:border-box;}
+  .fb{max-width:100%;overflow:hidden;}
+  .fb-row{max-width:100%;}
+  .fb-tabs:not([style*="none"]){max-width:100%;}
+  .fb-row{min-width:0;}
+  .fb-search{width:100%;}
+  .fb .range-select{flex:1 1 45%;min-width:0;max-width:100%;}
+  .handled-toggle{white-space:nowrap;}
+  .fb-tabs .filter-tab{white-space:nowrap;padding:8px 10px;}
+  .kpi-row.kpi-compact{grid-template-columns:repeat(2,1fr);gap:8px;}
+  .kpi-compact .kpi .lbl{font-size:9px;}
+  .cg-head{flex-wrap:wrap;}
+  .cg-name{min-width:0;flex:1;}
+  .nc-btn{padding:9px 12px;}
+  .nc-menu-pop{left:auto;right:0;}
+  .topbar .who .scope{display:none;}
+  #bulkBar,#toast{width:calc(100% - 24px);justify-content:space-between;}
+}
 .team-view-label{font-family:'IBM Plex Mono',monospace;font-size:11.5px;font-weight:600;color:var(--ink-soft);padding:0 8px;text-transform:uppercase;letter-spacing:.02em;}
 .scan-status{font-size:11.5px;color:var(--muted);margin:-8px 0 14px;font-family:'IBM Plex Mono',monospace;}
 .scan-status a{color:var(--thrive-blue);font-weight:600;}
@@ -255,6 +364,13 @@ let currentProviderFilter = 'all'; // lowercased provider_email, or 'all'
 let currentManagerFilter = 'all';  // manager display name, or 'all'
 let noteSimilarity = {};           // note id -> [{id, date, client, sim, crossClient}] for notes currently in Note Review
 let scorecardManagerFilter = 'all';
+let currentSearch = '';               // search box: client #, coach name or email
+let groupByCoach = true;              // Review Queue: group flagged notes by coach
+let expandedGroups = {};              // coach email -> true when that group is open
+let expandedCards = {};               // note id -> true when "Review note" is open
+let selectedIds = {};                 // note id -> true for bulk approve
+let moreFiltersOpen = false;
+let landingChosen = false;            // pick each reviewer's home tab once per sign-in
 
 function fmtLastSynced(dt){
   if(!dt) return 'not yet synced';
@@ -286,6 +402,7 @@ function scopedProviderEmails() {
 async function attachRosterScope(reviewer, userId) {
   reviewer.managerByProvider = {};  // lowercased provider_email -> manager name
   reviewer.directorByProvider = {}; // lowercased provider_email -> director name
+  reviewer.nameByProvider = {};     // lowercased provider_email -> coach name (roster.provider_name)
   reviewer.isDirector = false;
   if (reviewer.role === 'org_wide') {
     reviewer.supervisedProviders = null;
@@ -293,7 +410,7 @@ async function attachRosterScope(reviewer, userId) {
     await loadManagerDirectory(reviewer, null);
     return;
   }
-  var res = await sb.from('roster').select('provider_email, manager_id, director_id')
+  var res = await sb.from('roster').select('*')
     .or('manager_id.eq.' + userId + ',director_id.eq.' + userId);
   if (res.error && /director_id/.test(res.error.message || '')) {
     // roster.director_id hasn't been added yet (SETUP.md) -- manager scope only.
@@ -343,7 +460,18 @@ async function fillPeopleMaps(reviewer, rows) {
     var k = r.provider_email.toLowerCase();
     reviewer.managerByProvider[k] = nameById[r.manager_id] || 'Unknown manager';
     if (r.director_id) reviewer.directorByProvider[k] = nameById[r.director_id] || 'Unknown director';
+    if (r.provider_name) reviewer.nameByProvider[k] = r.provider_name;
   });
+}
+
+// Coach display name: roster.provider_name when set (3_coach_names.sql),
+// otherwise a readable version of the email.
+function coachName(email) {
+  if (!email) return 'No coach email';
+  var k = String(email).trim().toLowerCase();
+  var map = (currentReviewer && currentReviewer.nameByProvider) || {};
+  if (map[k]) return map[k];
+  return k.split('@')[0];
 }
 
 function sameName(a, b) {
@@ -644,7 +772,7 @@ function reviewPrompts(n) {
     out.push({ level: 'coaching', text: 'Repeats this client’s note from ' + fmt(same.date) + ' (' + Math.round(same.sim * 100) + '%). Is the client moving toward their goals, or is the note being carried forward? Good for a coaching conversation; refer to Utilization Review if services may not be helping the client move forward.' });
   }
   if (isDocQualityFlag(n)) {
-    out.push({ level: 'coaching', text: 'Documentation graded ' + n.compliance_grade + ' (issues listed above). Send back to the coach if it needs revision before audit or billing.' });
+    out.push({ level: 'coaching', text: 'Documentation graded ' + n.compliance_grade + ' (issues below). Send back to the coach if it needs revision before audit or billing.' });
   }
   if (n.itp_flagged) {
     out.push({ level: 'info', text: 'Coach flagged an ITP update. Confirm the treatment plan update is scheduled. Refer to Utilization Review if the level of care may need to change.' });
@@ -703,6 +831,7 @@ async function handleLogin() {
 
 async function handleSignOut() {
   await sb.auth.signOut();
+  landingChosen = false;
   currentReviewer = null;
   renderLogin();
 }
@@ -772,6 +901,12 @@ async function loadAndRenderDashboard() {
   allNotes = data || [];
   noteSimilarity = computeNoteSimilarity(allNotes);
   lastSyncedAt = new Date();
+  if (!landingChosen) {
+    // Home screen: directors with something escalated land there; everyone
+    // else lands on their Review Queue.
+    landingChosen = true;
+    currentMode = (currentReviewer.isDirector && openEscalationsToMeCount() > 0) ? 'escalated' : 'flagged';
+  }
   renderShell(false);
   autoScanInBackground();
 }
@@ -784,10 +919,9 @@ function renderShell(loading) {
     var supervised = currentReviewer.supervisedProviders || [];
     var mgrCount = {};
     supervised.forEach(function(e){ mgrCount[managerFor(e)] = true; });
-    if (!supervised.length) scopeLabel = 'No providers on your roster yet — contact Brandon';
-    else if (currentReviewer.isDirector) scopeLabel = 'Director view: ' + supervised.length + ' providers across ' + Object.keys(mgrCount).length + ' team' + (Object.keys(mgrCount).length === 1 ? '' : 's');
-    else if (supervised.length <= 6) scopeLabel = 'Supervising: ' + supervised.join(', ');
-    else scopeLabel = 'Supervising ' + supervised.length + ' providers';
+    if (!supervised.length) scopeLabel = 'No coaches on your roster yet — contact Brandon';
+    else if (currentReviewer.isDirector) scopeLabel = supervised.length + ' coaches across ' + Object.keys(mgrCount).length + ' team' + (Object.keys(mgrCount).length === 1 ? '' : 's');
+    else scopeLabel = 'Your team: ' + supervised.length + ' coaches';
   }
   var open = allNotes.filter(function(n){ return !n.reviewed; });
   app.innerHTML = `
@@ -801,9 +935,9 @@ function renderShell(loading) {
     </div>
     <div class="content">
       <div class="mode-toggle">
-        <div class="mode-tab" data-mode="team" title="${currentReviewer.isDirector ? 'Every note from every team under you' : 'Every note from the providers you supervise'}">${currentReviewer.isDirector ? 'All Team Notes' : 'Team Notes'}</div>
-        <div class="mode-tab" data-mode="flagged" title="Notes the scan flagged for review">Flagged Notes<span id="flaggedTabCount"></span></div>
+        <div class="mode-tab" data-mode="flagged" title="Flagged notes waiting for your review">Review Queue<span id="flaggedTabCount"></span></div>
         ${currentReviewer.isDirector ? '<div class="mode-tab" data-mode="escalated" title="Notes escalated to you">Escalated to Me<span id="escTabCount"></span></div>' : ''}
+        <div class="mode-tab" data-mode="team" title="Every note from your coaches, flagged or routine">${currentReviewer.isDirector ? 'All Team Notes' : 'Team Notes'}</div>
         <div class="mode-tab" data-mode="patterns">Caseload Patterns</div>
         <div class="mode-tab" data-mode="leadership">Leadership Dashboard</div>
       </div>
@@ -811,45 +945,52 @@ function renderShell(loading) {
       <div id="notesMode">
         <div id="kpiRow">${kpiRowHtml()}</div>
 
-        <div class="filter-bar">
-          <span id="queueTabs" style="display:contents">
-          <div class="filter-tab" data-filter="unreviewed" title="Flagged notes that haven't been reviewed yet, most urgent first">Needs Review</div>
-          <div class="filter-tab" data-filter="sent_back">Sent Back to Coach</div>
-          <div class="filter-tab" data-filter="director_escalated">Director</div>
-          <div class="filter-tab" data-filter="escalated">Clinical Director</div>
-          <div class="filter-tab" data-filter="ur">Utilization Review</div>
-          <div class="filter-tab" data-filter="all_flagged" title="Every flagged note in the date window, reviewed or not">All Flagged</div>
-          </span>
-          <span id="escTabs" style="display:none">
-            <div class="filter-tab esc-tab" data-esc="to_me">Escalated to Me</div>
-            ${currentReviewer.role === 'org_wide' ? '<div class="filter-tab esc-tab" data-esc="clinical">Clinical Director</div><div class="filter-tab esc-tab" data-esc="ur">Utilization Review</div>' : ''}
-            <label class="handled-toggle"><input type="checkbox" id="showHandledChk" ${showHandledEscalations ? 'checked' : ''}/> Show handled</label>
-          </span>
-          <span id="teamViewLabel" class="team-view-label">${currentReviewer.isDirector ? 'All notes across your teams' : 'All notes from your team'}</span>
-          <div class="filter-spacer"></div>
-          <select class="range-select" id="flagFilterSelect" title="Narrow the list to one kind of flag">
-            <option value="all">All flag types</option>
-            <option value="risk">Potential risk</option>
-            <option value="documentation">Documentation grade</option>
-            <option value="repetitive">Repetitive / copy-paste</option>
-            <option value="itp">ITP update</option>
-            ${currentReviewer.role === 'org_wide' ? '<option value="unknown_author">Unknown author (personal email / not on roster)</option>' : ''}
-            <option value="routine">Routine (scanned, no flags)</option>
-            <option value="awaiting_scan">Awaiting scan</option>
-          </select>
-          <span id="peopleFilters" style="display:contents">${renderPeopleFilterSelects()}</span>
-          <select class="range-select" id="dateRangeSelect" title="Flagged notes still needing review always show, regardless of this window.">
-            <option value="90">Last 90 days</option>
-            <option value="180">Last 6 months</option>
-            <option value="365">Last year</option>
-            <option value="all">All time</option>
-          </select>
-          ${currentReviewer.role === 'org_wide' ? '<button class="refresh-btn" id="gradeBatchBtn" title="Grades the oldest ungraded notes (backfill). New notes are scanned automatically.">Backfill Oldest</button>' : ''}
-          <button class="refresh-btn" id="refreshBtn">&#8635; Refresh</button>
-          <span id="lastSyncedLabel" title="This list only updates when you sign in or hit Refresh — it does not auto-poll." style="font-size:11px;color:#6B7280;align-self:center;white-space:nowrap">Synced: ${fmtLastSynced(lastSyncedAt)}</span>
+        <div class="filter-bar fb">
+          <div class="fb-row">
+            <span id="queueTabs" class="fb-tabs">
+              <div class="filter-tab" data-filter="unreviewed" title="Flagged notes not yet reviewed, most urgent first">Needs Review<span class="qcount" data-q="unreviewed"></span></div>
+              <div class="filter-tab" data-filter="sent_back">Sent Back<span class="qcount" data-q="sent_back"></span></div>
+              <div class="filter-tab" data-filter="director_escalated">Director<span class="qcount" data-q="director_escalated"></span></div>
+              <div class="filter-tab" data-filter="escalated">Clinical Director<span class="qcount" data-q="escalated"></span></div>
+              <div class="filter-tab" data-filter="ur">Utilization Review<span class="qcount" data-q="ur"></span></div>
+              <div class="filter-tab" data-filter="all_flagged" title="Every flagged note in the date window, reviewed or not">All Flagged</div>
+            </span>
+            <span id="escTabs" class="fb-tabs" style="display:none">
+              <div class="filter-tab esc-tab" data-esc="to_me">To Me</div>
+              ${currentReviewer.role === 'org_wide' ? '<div class="filter-tab esc-tab" data-esc="clinical">Clinical Director</div><div class="filter-tab esc-tab" data-esc="ur">Utilization Review</div>' : ''}
+              <label class="handled-toggle"><input type="checkbox" id="showHandledChk" ${showHandledEscalations ? 'checked' : ''}/> Show handled</label>
+            </span>
+            <span id="teamViewLabel" class="team-view-label">${currentReviewer.isDirector ? 'All notes across your teams' : 'All notes from your team'}</span>
+          </div>
+          <div class="fb-row">
+            <input type="search" id="searchInput" class="fb-search" placeholder="Search client # or coach…" value="${escapeHtml(currentSearch)}"/>
+            <select class="range-select" id="flagFilterSelect" title="Show one kind of flag">
+              <option value="all">All flag types</option>
+              <option value="risk">Potential risk</option>
+              <option value="documentation">Documentation grade</option>
+              <option value="repetitive">Repetitive / copy-paste</option>
+              <option value="itp">ITP update</option>
+              ${currentReviewer.role === 'org_wide' ? '<option value="unknown_author">Unknown author</option>' : ''}
+              <option value="routine">Routine (no flags)</option>
+              <option value="awaiting_scan">Not graded yet</option>
+            </select>
+            <button class="fb-btn" id="moreFiltersBtn">Filters<span id="moreFiltersCount"></span> \u25BE</button>
+            <label class="handled-toggle" id="groupToggleWrap"><input type="checkbox" id="groupByCoachChk" ${groupByCoach ? 'checked' : ''}/> Group by coach</label>
+            <div class="filter-spacer"></div>
+            <button class="fb-btn icon" id="refreshBtn" title="Refresh">&#8635;</button>
+            <span id="lastSyncedLabel" class="fb-synced" title="The list updates when you sign in or press refresh.">Updated ${fmtLastSynced(lastSyncedAt)}</span>
+          </div>
+          <div class="fb-row fb-more" id="moreFilters" style="${moreFiltersOpen ? '' : 'display:none'}">
+            <span id="peopleFilters" style="display:contents">${renderPeopleFilterSelects()}</span>
+            <select class="range-select" id="dateRangeSelect" title="Flagged notes still needing review always show, regardless of this window.">
+              <option value="90">Last 90 days</option>
+              <option value="180">Last 6 months</option>
+              <option value="365">Last year</option>
+              <option value="all">All time</option>
+            </select>
+          </div>
         </div>
         <div id="scanStatus" class="scan-status"></div>
-        <div id="gradeBatchStatus" class="lead-section-sub" style="margin-top:-4px;">${escapeHtml(lastBackfillMsg)}</div>
         <div id="listCount" class="list-count"></div>
         <div id="notesList">${loading ? '<div class="loading-state">Loading notes&hellip;</div>' : ''}</div>
       </div>
@@ -865,8 +1006,6 @@ function renderShell(loading) {
   `;
   document.getElementById('signOutBtn').onclick = handleSignOut;
   document.getElementById('refreshBtn').onclick = function(){ autoScanDone = 0; loadAndRenderDashboard(); };
-  var gradeBatchBtnEl = document.getElementById('gradeBatchBtn');
-  if (gradeBatchBtnEl) gradeBatchBtnEl.onclick = gradeNextBatch;
   var dateRangeSelectEl = document.getElementById('dateRangeSelect');
   if (dateRangeSelectEl) {
     dateRangeSelectEl.value = String(currentDateRangeDays);
@@ -889,6 +1028,22 @@ function renderShell(loading) {
     flagSelectEl.value = currentFlagFilter;
     flagSelectEl.onchange = function(){ currentFlagFilter = flagSelectEl.value; listLimit = LIST_PAGE_SIZE; renderNotesList(); };
   }
+  var searchEl = document.getElementById('searchInput');
+  if (searchEl) {
+    var searchTimer = null;
+    searchEl.oninput = function(){
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(function(){ currentSearch = searchEl.value.trim().toLowerCase(); listLimit = LIST_PAGE_SIZE; renderNotesList(); }, 200);
+    };
+  }
+  var moreBtnEl = document.getElementById('moreFiltersBtn');
+  if (moreBtnEl) moreBtnEl.onclick = function(){
+    moreFiltersOpen = !moreFiltersOpen;
+    document.getElementById('moreFilters').style.display = moreFiltersOpen ? '' : 'none';
+  };
+  var groupChk = document.getElementById('groupByCoachChk');
+  if (groupChk) groupChk.onchange = function(){ groupByCoach = groupChk.checked; renderNotesList(); };
+  updateMoreFiltersCount();
   updateScanStatus();
   document.querySelectorAll('.mode-tab').forEach(function(tab){
     tab.onclick = function(){
@@ -915,14 +1070,14 @@ function renderPeopleFilterSelects() {
   if (currentProviderFilter !== 'all') providers[currentProviderFilter] = true; // keep a drill-down selection visible
   var html = '';
   if (currentReviewer && currentReviewer.isDirector) {
-    html += '<select class="range-select" id="managerFilterSelect" title="Filter by the provider’s manager (from the roster table)">'
+    html += '<select class="range-select" id="managerFilterSelect" title="Filter by manager">'
       + '<option value="all">All managers</option>'
       + Object.keys(managers).sort().map(function(m){ return '<option value="' + escapeHtml(m) + '"' + (m === currentManagerFilter ? ' selected' : '') + '>' + escapeHtml(m) + '</option>'; }).join('')
       + '</select>';
   }
   html += '<select class="range-select" id="providerFilterSelect" title="Filter to one provider">'
-    + '<option value="all">All providers</option>'
-    + Object.keys(providers).sort().map(function(p){ return '<option value="' + escapeHtml(p) + '"' + (p === currentProviderFilter ? ' selected' : '') + '>' + escapeHtml(p) + '</option>'; }).join('')
+    + '<option value="all">All coaches</option>'
+    + Object.keys(providers).sort(function(a, b){ return coachName(a).localeCompare(coachName(b)); }).map(function(p){ return '<option value="' + escapeHtml(p) + '"' + (p === currentProviderFilter ? ' selected' : '') + '>' + escapeHtml(coachName(p)) + '</option>'; }).join('')
     + '</select>';
   return html;
 }
@@ -937,15 +1092,22 @@ function refreshPeopleFilters() {
 
 function bindPeopleFilters() {
   var providerSelectEl = document.getElementById('providerFilterSelect');
-  if (providerSelectEl) providerSelectEl.onchange = function(){ currentProviderFilter = providerSelectEl.value; listLimit = LIST_PAGE_SIZE; renderNotesList(); };
+  if (providerSelectEl) providerSelectEl.onchange = function(){ currentProviderFilter = providerSelectEl.value; listLimit = LIST_PAGE_SIZE; updateMoreFiltersCount(); renderNotesList(); };
   var managerSelectEl = document.getElementById('managerFilterSelect');
   if (managerSelectEl) managerSelectEl.onchange = function(){
     currentManagerFilter = managerSelectEl.value;
     currentProviderFilter = 'all'; // a provider from another team would otherwise silently empty the list
     listLimit = LIST_PAGE_SIZE;
     refreshPeopleFilters();
+    updateMoreFiltersCount();
     renderNotesList();
   };
+}
+
+function updateMoreFiltersCount() {
+  var n = (currentManagerFilter !== 'all' ? 1 : 0) + (currentProviderFilter !== 'all' ? 1 : 0) + (currentDateRangeDays !== 90 ? 1 : 0);
+  var el = document.getElementById('moreFiltersCount');
+  if (el) el.textContent = n ? ' (' + n + ')' : '';
 }
 
 // Scorecard row click -> Note Review showing ALL of that provider's notes
@@ -956,10 +1118,24 @@ function drillIntoProvider(email) {
   currentFlagFilter = 'all';
   var fs = document.getElementById('flagFilterSelect'); if (fs) fs.value = 'all';
   switchMode('team');
+  moreFiltersOpen = true;
+  var mf = document.getElementById('moreFilters'); if (mf) mf.style.display = '';
   var k = document.getElementById('kpiRow'); if (k) k.innerHTML = kpiRowHtml();
+  updateMoreFiltersCount();
   refreshPeopleFilters();
   renderNotesList();
   window.scrollTo(0, 0);
+}
+
+function queueCount(q) {
+  return allNotes.filter(function(n){
+    if (q === 'unreviewed') return noteNeedsReview(n);
+    if (q === 'sent_back') return n.reviewed && n.review_outcome === 'rejected';
+    if (q === 'director_escalated') return n.director_escalated && !n.director_escalated_ack;
+    if (q === 'escalated') return n.escalated && !n.resolved;
+    if (q === 'ur') return n.ur_referred && !n.ur_resolved;
+    return false;
+  }).length;
 }
 
 function kpiRowHtml() {
@@ -970,37 +1146,31 @@ function kpiRowHtml() {
   var escOpen = openEscalationsToMeCount();
   var ec = document.getElementById('escTabCount');
   if (ec) ec.innerHTML = escOpen ? ' <span class="count">' + escOpen + '</span>' : '';
+  document.querySelectorAll('.qcount').forEach(function(el){
+    var c = queueCount(el.getAttribute('data-q'));
+    el.textContent = c ? ' ' + c : '';
+  });
+  var risk = count(function(n){ return !n.reviewed && (n.concern_flagged || n.ai_concern_flagged); });
   if (currentMode === 'escalated') {
     var orgWide = currentReviewer && currentReviewer.role === 'org_wide';
-    return `
-      <div class="kpi-row">
-        <div class="kpi bad"><div class="lbl">Escalated to Me (Open)</div><div class="val">${escOpen}</div></div>
-        <div class="kpi"><div class="lbl">Acknowledged (in view)</div><div class="val">${count(function(n){ return escalatedToMe(n) && n.director_escalated_ack; })}</div></div>
-        ${orgWide ? '<div class="kpi esc"><div class="lbl">Clinical Director / UR (Open)</div><div class="val">' + count(function(n){ return n.escalated && !n.resolved; }) + ' / ' + count(function(n){ return n.ur_referred && !n.ur_resolved; }) + '</div></div>' : ''}
-      </div>
-    `;
+    return '<div class="kpi-row kpi-compact">'
+      + '<div class="kpi bad"><div class="lbl">Escalated to you, open</div><div class="val">' + escOpen + '</div></div>'
+      + (orgWide ? '<div class="kpi esc"><div class="lbl">Clinical Director / UR open</div><div class="val">' + count(function(n){ return n.escalated && !n.resolved; }) + ' / ' + count(function(n){ return n.ur_referred && !n.ur_resolved; }) + '</div></div>' : '')
+      + '</div>';
   }
   if (currentMode === 'team') {
     var providers = {};
     allNotes.forEach(function(n){ if (n.provider_email) providers[n.provider_email.toLowerCase()] = true; });
-    return `
-      <div class="kpi-row">
-        <div class="kpi"><div class="lbl">${currentReviewer.isDirector ? 'All Team Notes' : 'Team Notes'} (in view)</div><div class="val">${allNotes.length}</div></div>
-        <div class="kpi"><div class="lbl">Providers</div><div class="val">${Object.keys(providers).length}</div></div>
-        <div class="kpi bad"><div class="lbl">Flagged, Needs Review</div><div class="val">${needs}</div></div>
-      </div>
-    `;
+    return '<div class="kpi-row kpi-compact">'
+      + '<div class="kpi"><div class="lbl">Notes in view</div><div class="val">' + allNotes.length.toLocaleString() + '</div></div>'
+      + '<div class="kpi"><div class="lbl">Coaches</div><div class="val">' + Object.keys(providers).length + '</div></div>'
+      + '<div class="kpi bad"><div class="lbl">Need review</div><div class="val">' + needs + '</div></div>'
+      + '</div>';
   }
-  return `
-    <div class="kpi-row">
-      <div class="kpi bad"><div class="lbl">Needs Review</div><div class="val">${needs}</div></div>
-      <div class="kpi bad"><div class="lbl">Potential Risk, Not Yet Reviewed</div><div class="val">${count(function(n){ return !n.reviewed && (n.concern_flagged || n.ai_concern_flagged); })}</div></div>
-      <div class="kpi warn"><div class="lbl">Sent Back to Coach</div><div class="val">${count(function(n){ return n.reviewed && n.review_outcome === 'rejected'; })}</div></div>
-      <div class="kpi"><div class="lbl">Escalated to Director (Open)</div><div class="val">${count(function(n){ return n.director_escalated && !n.director_escalated_ack; })}</div></div>
-      <div class="kpi esc"><div class="lbl">Escalated to Clinical Director (Open)</div><div class="val">${count(function(n){ return n.escalated && !n.resolved; })}</div></div>
-      <div class="kpi esc"><div class="lbl">Utilization Review (Open)</div><div class="val">${count(function(n){ return n.ur_referred && !n.ur_resolved; })}</div></div>
-    </div>
-  `;
+  return '<div class="kpi-row kpi-compact">'
+    + '<div class="kpi bad"><div class="lbl">Need review</div><div class="val">' + needs + '</div></div>'
+    + '<div class="kpi bad"><div class="lbl">Potential risk, not yet reviewed</div><div class="val">' + risk + '</div></div>'
+    + '</div>';
 }
 
 // Refreshes counts + list in place without rebuilding the shell (which
@@ -1013,7 +1183,7 @@ function refreshNotesView() {
   updateScanStatus();
 }
 
-var currentMode = 'team'; // team | flagged | patterns | leadership
+var currentMode = 'flagged'; // flagged | escalated | team | patterns | leadership
 var LIST_PAGE_SIZE = 100;
 var listLimit = LIST_PAGE_SIZE;
 var patternsLoaded = false;
@@ -1030,13 +1200,15 @@ function switchMode(mode) {
   if (!notesEl || !patternsEl || !leadershipEl) return;
   var isNotesView = (mode === 'team' || mode === 'flagged' || mode === 'escalated');
   var et = document.getElementById('escTabs');
-  if (et) et.style.display = (mode === 'escalated') ? 'contents' : 'none';
+  if (et) et.style.display = (mode === 'escalated') ? '' : 'none';
   notesEl.style.display = isNotesView ? 'block' : 'none';
   var qt = document.getElementById('queueTabs');
-  if (qt) qt.style.display = (mode === 'flagged') ? 'contents' : 'none';
+  if (qt) qt.style.display = (mode === 'flagged') ? '' : 'none';
   var tl = document.getElementById('teamViewLabel');
   if (tl) tl.style.display = (mode === 'team') ? '' : 'none';
   if (isNotesView) listLimit = LIST_PAGE_SIZE;
+  var gw = document.getElementById('groupToggleWrap');
+  if (gw) gw.style.display = (mode === 'flagged') ? '' : 'none';
   patternsEl.style.display = (mode === 'patterns') ? 'block' : 'none';
   leadershipEl.style.display = (mode === 'leadership') ? 'block' : 'none';
   if (mode === 'patterns' && !patternsLoaded) {
@@ -1061,6 +1233,10 @@ function renderNotesList() {
     if (currentProviderFilter !== 'all' && String(n.provider_email || '').toLowerCase() !== currentProviderFilter) return false;
     if (currentManagerFilter !== 'all' && managerFor(n.provider_email) !== currentManagerFilter) return false;
     if (!matchesFlagFilter(n)) return false;
+    if (currentSearch) {
+      var hay = (String(n.client_number || '') + ' ' + String(n.provider_email || '') + ' ' + coachName(n.provider_email)).toLowerCase();
+      if (hay.indexOf(currentSearch) < 0) return false;
+    }
     if (currentMode === 'team') return true; // Team Notes: every note in scope
     if (currentMode === 'escalated') return matchesEscFilter(n) && (showHandledEscalations || isEscalationOpen(n));
     if (currentFilter === 'all_flagged') return noteHasAnyFlag(n);
@@ -1079,19 +1255,86 @@ function renderNotesList() {
   var countEl = document.getElementById('listCount');
   if (countEl) {
     var who = currentProviderFilter !== 'all' ? (' for ' + currentProviderFilter) : (currentManagerFilter !== 'all' ? (' for ' + currentManagerFilter + '’s team') : '');
-    countEl.textContent = 'Showing ' + filtered.length + ' note' + (filtered.length === 1 ? '' : 's') + who;
+    var who2 = currentProviderFilter !== 'all' ? (' for ' + coachName(currentProviderFilter)) : who;
+    countEl.textContent = filtered.length.toLocaleString() + ' note' + (filtered.length === 1 ? '' : 's') + who2 + (currentSearch ? ' matching \u201C' + currentSearch + '\u201D' : '');
   }
   if (filtered.length === 0) {
+    updateBulkBar();
     listEl.innerHTML = '<div class="empty-state"><p>' + ((currentMode === 'flagged' && currentFilter === 'unreviewed') ? 'All caught up — no flagged notes waiting for review on your team.' : (currentMode === 'escalated' ? 'Nothing open has been escalated to you.' : 'No notes match this filter.')) + '</p></div>';
     return;
   }
 
+  var grouped = (currentMode === 'flagged' && currentFilter === 'unreviewed' && groupByCoach);
+  if (grouped && countEl) {
+    var coachSet = {};
+    filtered.forEach(function(n){ coachSet[String(n.provider_email || '').toLowerCase()] = true; });
+    countEl.textContent += ' from ' + Object.keys(coachSet).length + ' coach' + (Object.keys(coachSet).length === 1 ? '' : 'es') + ' \u2014 click a coach to see their notes';
+  }
+  var html = '';
   var total = filtered.length;
-  filtered = filtered.slice(0, listLimit);
-  listEl.innerHTML = filtered.map(renderNoteCard).join('')
-    + (total > filtered.length ? '<div style="text-align:center;margin:10px 0 30px;"><button class="refresh-btn" id="showMoreBtn">Show ' + Math.min(LIST_PAGE_SIZE, total - filtered.length) + ' more (' + (total - filtered.length) + ' remaining)</button></div>' : '');
+  if (grouped) {
+    var groups = {};
+    filtered.forEach(function(n){
+      var k = String(n.provider_email || '(no email)').toLowerCase();
+      (groups[k] = groups[k] || []).push(n);
+    });
+    var keys = Object.keys(groups).sort(function(a, b){
+      var pa = Math.min.apply(null, groups[a].map(notePriority)), pb = Math.min.apply(null, groups[b].map(notePriority));
+      return (pa - pb) || (groups[b].length - groups[a].length);
+    });
+    total = keys.length;
+    var shownCards = [];
+    keys.slice(0, listLimit).forEach(function(k){
+      var g = groups[k];
+      var risk = g.filter(function(n){ return n.concern_flagged || n.ai_concern_flagged || isUnknownAuthor(n); }).length;
+      var docs = g.filter(isDocQualityFlag).length;
+      var rep = g.filter(function(n){ return noteSimilarity[n.id] && noteSimilarity[n.id].length; }).length;
+      var open = !!expandedGroups[k];
+      var allSel = g.every(function(n){ return selectedIds[n.id]; });
+      html += '<div class="cg' + (open ? ' open' : '') + '">'
+        + '<div class="cg-head" data-group="' + escapeHtml(k) + '">'
+        + '<input type="checkbox" class="cg-check" data-group="' + escapeHtml(k) + '" title="Select all of this coach\u2019s notes"' + (allSel ? ' checked' : '') + '/>'
+        + '<div class="cg-name">' + escapeHtml(coachName(k)) + '<span class="cg-mgr">' + escapeHtml(managerFor(k)) + '</span></div>'
+        + '<div class="cg-chips">'
+        + (risk ? '<span class="why-chip why-risk">' + risk + ' risk</span>' : '')
+        + (docs ? '<span class="why-chip why-warn">' + docs + ' documentation</span>' : '')
+        + (rep ? '<span class="why-chip why-warn">' + rep + ' repetitive</span>' : '')
+        + '</div>'
+        + '<div class="cg-count">' + g.length + ' note' + (g.length === 1 ? '' : 's') + ' <span class="cg-caret">' + (open ? '\u25B4' : '\u25BE') + '</span></div>'
+        + '</div>'
+        + (open ? '<div class="cg-body">' + g.map(renderNoteCard).join('') + '</div>' : '')
+        + '</div>';
+      if (open) shownCards = shownCards.concat(g);
+    });
+    if (total > listLimit) html += '<div style="text-align:center;margin:10px 0 30px;"><button class="refresh-btn" id="showMoreBtn">Show more coaches (' + (total - listLimit) + ' remaining)</button></div>';
+    filtered = shownCards;
+  } else {
+    filtered = filtered.slice(0, listLimit);
+    html = filtered.map(renderNoteCard).join('')
+      + (total > filtered.length ? '<div style="text-align:center;margin:10px 0 30px;"><button class="refresh-btn" id="showMoreBtn">Show ' + Math.min(LIST_PAGE_SIZE, total - filtered.length) + ' more (' + (total - filtered.length) + ' remaining)</button></div>' : '');
+  }
+  listEl.innerHTML = html;
   var moreBtn = document.getElementById('showMoreBtn');
   if (moreBtn) moreBtn.onclick = function(){ listLimit += LIST_PAGE_SIZE; renderNotesList(); };
+  document.querySelectorAll('.cg-head').forEach(function(h){
+    h.onclick = function(e){
+      if (e.target.classList.contains('cg-check')) return;
+      var k = h.getAttribute('data-group');
+      expandedGroups[k] = !expandedGroups[k];
+      renderNotesList();
+    };
+  });
+  document.querySelectorAll('.cg-check').forEach(function(c){
+    c.onchange = function(){
+      var k = c.getAttribute('data-group');
+      allNotes.forEach(function(n){ if (noteNeedsReview(n) && String(n.provider_email || '(no email)').toLowerCase() === k) { if (c.checked) selectedIds[n.id] = true; else delete selectedIds[n.id]; } });
+      renderNotesList();
+    };
+  });
+  document.querySelectorAll('.nc-check').forEach(function(c){
+    c.onchange = function(){ var id = c.getAttribute('data-id'); if (c.checked) selectedIds[id] = true; else delete selectedIds[id]; updateBulkBar(); };
+  });
+  updateBulkBar();
   filtered.forEach(function(note){
     var approveBtn = document.getElementById('approveBtn_' + note.id);
     if (approveBtn) approveBtn.onclick = function(){ resolveNote(note.id, 'approved'); };
@@ -1117,10 +1360,12 @@ function renderNotesList() {
     var collapseBtn = document.getElementById('collapseToggle_' + note.id);
     var contentDiv = document.getElementById('noteContent_' + note.id);
     if (collapseBtn && contentDiv) {
+      if (expandedCards[note.id]) { contentDiv.style.display = 'block'; collapseBtn.textContent = 'Hide \u25B4'; }
       collapseBtn.onclick = function(){
         var nowHidden = contentDiv.style.display !== 'none';
+        if (nowHidden) delete expandedCards[note.id]; else expandedCards[note.id] = true;
         contentDiv.style.display = nowHidden ? 'none' : 'block';
-        collapseBtn.textContent = nowHidden ? 'Show note & provider contact' : 'Hide note & provider contact';
+        collapseBtn.textContent = nowHidden ? 'Review note \u25BE' : 'Hide \u25B4';
       };
     }
 
@@ -1129,21 +1374,77 @@ function renderNotesList() {
   });
 }
 
+// Apply a saved change to the in-memory notes and redraw just the list, so
+// the page doesn't reload or jump back to the top after every action.
+function applyLocal(ids, fields) {
+  var set = {};
+  ids.forEach(function(id){ set[String(id)] = true; });
+  allNotes.forEach(function(n){ if (set[String(n.id)]) Object.assign(n, fields); });
+  ids.forEach(function(id){ delete selectedIds[id]; });
+  leadershipLoaded = false; // dashboards recompute on next visit
+  var y = window.scrollY;
+  refreshNotesView();
+  window.scrollTo(0, y);
+}
+
+function fadeOutCard(id) {
+  var btn = document.getElementById('approveBtn_' + id) || document.getElementById('rejectBtn_' + id);
+  var card = btn && btn.closest('.note-card');
+  if (card) card.classList.add('nc-leaving');
+  return new Promise(function(r){ setTimeout(r, card ? 220 : 0); });
+}
+
+var toastTimer = null;
+function showToast(msg, undoFn) {
+  var t = document.getElementById('toast');
+  if (!t) { t = document.createElement('div'); t.id = 'toast'; document.body.appendChild(t); }
+  t.innerHTML = '<span>' + escapeHtml(msg) + '</span>' + (undoFn ? '<button id="toastUndo">Undo</button>' : '');
+  t.className = 'show';
+  var u = document.getElementById('toastUndo');
+  if (u) u.onclick = function(){ t.className = ''; undoFn(); };
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ t.className = ''; }, 6000);
+}
+
+var UNREVIEW = { reviewed: false, reviewed_by: null, reviewed_date: null, review_outcome: null };
+async function undoReview(ids) {
+  var { error } = await sb.from(TABLE).update(UNREVIEW).in('id', ids);
+  if (error) { alert('Could not undo: ' + error.message); return; }
+  applyLocal(ids, UNREVIEW);
+  showToast('Moved back to Needs Review');
+}
+
+async function approveIds(ids) {
+  var fields = { reviewed: true, reviewed_by: currentReviewer.name, reviewed_date: new Date().toISOString(), review_outcome: 'approved' };
+  var { error } = await sb.from(TABLE).update(fields).in('id', ids);
+  if (error) { alert('Could not save: ' + error.message); return false; }
+  applyLocal(ids, fields);
+  showToast(ids.length === 1 ? 'Approved' : ids.length + ' notes approved', function(){ undoReview(ids); });
+  return true;
+}
+
+function updateBulkBar() {
+  var ids = Object.keys(selectedIds);
+  var bar = document.getElementById('bulkBar');
+  if (!bar) { bar = document.createElement('div'); bar.id = 'bulkBar'; document.body.appendChild(bar); }
+  if (!ids.length || currentMode !== 'flagged') { bar.className = ''; return; }
+  bar.innerHTML = '<span>' + ids.length + ' selected</span><button id="bulkApprove">Approve selected</button><button id="bulkClear" class="ghost">Clear</button>';
+  bar.className = 'show';
+  document.getElementById('bulkApprove').onclick = async function(){
+    if (ids.length > 5 && !confirm('Approve ' + ids.length + ' notes?')) return;
+    this.disabled = true; this.textContent = 'Saving…';
+    await approveIds(ids);
+  };
+  document.getElementById('bulkClear').onclick = function(){ selectedIds = {}; renderNotesList(); };
+}
+
 async function resolveNote(noteId, outcome) {
   var btn = document.getElementById(outcome === 'approved' ? 'approveBtn_' + noteId : 'rejectBtn_' + noteId);
   if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
 
-  var { error } = await sb.from(TABLE).update({
-    reviewed: true, reviewed_by: currentReviewer.name,
-    reviewed_date: new Date().toISOString(), review_outcome: outcome
-  }).eq('id', noteId);
-
-  if (error) {
-    alert('Could not save: ' + error.message);
-    if (btn) { btn.disabled = false; btn.textContent = outcome === 'approved' ? 'Approve' : 'Send Back to Coach'; }
-    return;
-  }
-  await loadAndRenderDashboard();
+  await fadeOutCard(noteId);
+  var ok = await approveIds([noteId]);
+  if (!ok && btn) { btn.disabled = false; btn.textContent = 'Approve'; }
 }
 
 async function rejectNote(note) {
@@ -1154,11 +1455,12 @@ async function rejectNote(note) {
   var btn = document.getElementById('rejectBtn_' + note.id);
   if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
 
-  var { error } = await sb.from(TABLE).update({
+  var rejFields = {
     reviewed: true, reviewed_by: currentReviewer.name,
     reviewed_date: new Date().toISOString(), review_outcome: 'rejected',
     reject_reason: reason || null
-  }).eq('id', note.id);
+  };
+  var { error } = await sb.from(TABLE).update(rejFields).eq('id', note.id);
 
   if (error) {
     alert('Could not save: ' + error.message);
@@ -1170,7 +1472,8 @@ async function rejectNote(note) {
     var wantsEmail = confirm('Note sent back to the coach. Email ' + note.provider_email + ' now with what needs fixing?');
     if (wantsEmail) emailProvider(Object.assign({}, note, { _rejectReason: reason }));
   }
-  await loadAndRenderDashboard();
+  applyLocal([note.id], rejFields);
+  showToast('Sent back to ' + coachName(note.provider_email), function(){ undoReview([note.id]); });
 }
 
 // ── ESCALATE TO DIRECTOR: routes straight to the note's provider's actual
@@ -1198,19 +1501,20 @@ async function escalateToDirector(note) {
   // note on the director's hub tasks. director_escalated_to is kept purely as
   // a record of who the roster resolved to (useful for auditing / debugging a
   // bad roster mapping), not for addressing an email.
-  var { error } = await sb.from(TABLE).update({
+  var dirFields = {
     director_escalated: true, director_escalated_by: currentReviewer.name,
     director_escalated_date: new Date().toISOString(),
     director_escalated_to: directorName
-  }).eq('id', note.id);
+  };
+  var { error } = await sb.from(TABLE).update(dirFields).eq('id', note.id);
 
   if (error) {
     alert('Could not escalate to director: ' + error.message);
-    if (btn) { btn.disabled = false; btn.textContent = 'Escalate to Director'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'To Director'; }
     return;
   }
-
-  await loadAndRenderDashboard();
+  applyLocal([note.id], dirFields);
+  showToast('Escalated to ' + (directorName || 'director'));
 }
 
 // A director marks an "Escalate to Director" note as seen/handled. Separate
@@ -1220,17 +1524,19 @@ async function acknowledgeDirectorEscalation(note) {
   var btn = document.getElementById('ackDirectorBtn_' + note.id);
   if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
 
-  var { error } = await sb.from(TABLE).update({
+  var ackFields = {
     director_escalated_ack: true, director_escalated_ack_by: currentReviewer.name,
     director_escalated_ack_date: new Date().toISOString()
-  }).eq('id', note.id);
+  };
+  var { error } = await sb.from(TABLE).update(ackFields).eq('id', note.id);
 
   if (error) {
     alert('Could not acknowledge: ' + error.message);
-    if (btn) { btn.disabled = false; btn.textContent = 'Acknowledge'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Acknowledge escalation'; }
     return;
   }
-  await loadAndRenderDashboard();
+  applyLocal([note.id], ackFields);
+  showToast('Escalation acknowledged');
 }
 
 // ── ESCALATE TO CLINICAL: sets the `escalated` field, which is what feeds
@@ -1240,18 +1546,19 @@ async function escalateToClinical(note) {
   var btn = document.getElementById('escalateClinicalBtn_' + note.id);
   if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
 
-  var { error } = await sb.from(TABLE).update({
+  var clinFields = {
     escalated: true, escalated_by: currentReviewer.name,
     escalated_date: new Date().toISOString()
-  }).eq('id', note.id);
+  };
+  var { error } = await sb.from(TABLE).update(clinFields).eq('id', note.id);
 
   if (error) {
     alert('Could not escalate to clinical: ' + error.message);
-    if (btn) { btn.disabled = false; btn.textContent = 'Escalate to Clinical Director'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'To Clinical Director'; }
     return;
   }
-
-  await loadAndRenderDashboard();
+  applyLocal([note.id], clinFields);
+  showToast('Escalated to the Clinical Director');
 }
 
 // ── UTILIZATION REVIEW: needs ur_* columns (SQL in SETUP.md). ──
@@ -1266,16 +1573,18 @@ async function referToUtilizationReview(note) {
   if (reason === null) return;
   var btn = document.getElementById('urBtn_' + note.id);
   if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
-  var { error } = await sb.from(TABLE).update({
+  var urFields = {
     ur_referred: true, ur_referred_by: currentReviewer.name,
     ur_referred_date: new Date().toISOString(), ur_reason: reason.trim() || null
-  }).eq('id', note.id);
+  };
+  var { error } = await sb.from(TABLE).update(urFields).eq('id', note.id);
   if (error) {
     alert('Could not refer to Utilization Review: ' + urSetupMessage(error));
-    if (btn) { btn.disabled = false; btn.textContent = 'Refer to Utilization Review'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'To Utilization Review'; }
     return;
   }
-  await loadAndRenderDashboard();
+  applyLocal([note.id], urFields);
+  showToast('Referred to Utilization Review');
 }
 
 async function completeUtilizationReview(note) {
@@ -1283,16 +1592,18 @@ async function completeUtilizationReview(note) {
   if (outcome === null) return;
   var btn = document.getElementById('urDoneBtn_' + note.id);
   if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
-  var { error } = await sb.from(TABLE).update({
+  var urDone = {
     ur_resolved: true, ur_resolved_by: currentReviewer.name,
     ur_resolved_date: new Date().toISOString(), ur_outcome: outcome.trim() || null
-  }).eq('id', note.id);
+  };
+  var { error } = await sb.from(TABLE).update(urDone).eq('id', note.id);
   if (error) {
     alert('Could not save: ' + urSetupMessage(error));
-    if (btn) { btn.disabled = false; btn.textContent = 'Mark UR Complete'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Mark UR complete'; }
     return;
   }
-  await loadAndRenderDashboard();
+  applyLocal([note.id], urDone);
+  showToast('Utilization Review marked complete');
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -1343,7 +1654,7 @@ async function gradeNextBatch() {
       : ('Grading failed: ' + out.error.message);
   }
   if (statusEl) lastBackfillMsg = statusEl.textContent;
-  if (btn) { btn.disabled = false; btn.textContent = 'Backfill Oldest'; }
+  if (btn) { btn.disabled = false; btn.textContent = 'Grade oldest 25 now'; }
   await loadAndRenderDashboard();
 }
 
@@ -1393,13 +1704,12 @@ function updateScanStatus() {
   if (!el) return;
   var inView = allNotes.length;
   var awaiting = allNotes.filter(function(n){ return !n.compliance_grade && !n.compliance_graded_at; }).length;
-  var parts = ['Documentation scan: ' + (inView - awaiting) + ' of ' + inView + ' notes in view scanned'];
-  if (autoScanRunning) parts.push('scanning newest notes now (' + autoScanDone + ' this visit)…');
-  else if (autoScanError) parts.push('scan paused: ' + escapeHtml(autoScanError));
-  else if (awaiting && autoScanDone >= AUTO_SCAN.maxPerVisit) parts.push(awaiting + ' still waiting; scanning continues on the next visit or Refresh');
-  var html = parts.join(' &middot; ');
-  if (autoScanNewlyFlagged) html += ' &middot; <a href="#" id="showNewlyFlagged">' + autoScanNewlyFlagged + ' newly flagged — update list</a>';
+  var html = '';
+  if (autoScanError) html = 'Grading paused: ' + escapeHtml(autoScanError);
+  else if (awaiting) html = 'Grading in progress: ' + (inView - awaiting).toLocaleString() + ' of ' + inView.toLocaleString() + ' notes checked. New grades appear automatically every few minutes.';
+  if (autoScanNewlyFlagged) html += (html ? ' ' : '') + '<a href="#" id="showNewlyFlagged">' + autoScanNewlyFlagged + ' newly flagged \u2014 update list</a>';
   el.innerHTML = html;
+  el.style.display = html ? '' : 'none';
   var link = document.getElementById('showNewlyFlagged');
   if (link) link.onclick = function(e){ e.preventDefault(); refreshNotesView(); };
 }
@@ -1439,161 +1749,119 @@ function emailProvider(note) {
   window.location.href = mailto;
 }
 
+// Short, plain-language reasons this note is flagged -- the one line a
+// manager reads to decide whether to open it.
+function flagSummary(note) {
+  var out = [];
+  var sim = noteSimilarity[note.id] || [];
+  if (note.ai_concern_flagged && !note.concern_flagged) out.push({ t: '⚠ Possible risk, not reported by coach', c: 'risk' });
+  if (note.concern_flagged) out.push({ t: 'Concern reported by coach', c: 'risk' });
+  if (isUnknownAuthor(note)) out.push({ t: 'Unknown author', c: 'risk' });
+  if (sim.some(function(x){ return x.crossClient; })) out.push({ t: 'Matches another client’s note', c: 'risk' });
+  if (sim.some(function(x){ return !x.crossClient; })) out.push({ t: 'Repeats an earlier note', c: 'warn' });
+  if (isDocQualityFlag(note)) {
+    var themes = {};
+    (note.compliance_issues || []).forEach(function(i){ var m = String(i).match(/^\s*\[([^\]]+)\]/); if (m) themes[m[1]] = true; });
+    var t = Object.keys(themes);
+    out.push({ t: note.compliance_grade + (t.length ? (': ' + t.join(', ')) : ''), c: note.compliance_grade === 'Non-Compliant' ? 'risk' : 'warn' });
+  }
+  if (note.itp_flagged) out.push({ t: 'ITP update requested', c: 'info' });
+  return out;
+}
+
+function stripIssueTag(s) { return String(s).replace(/^\s*\[[^\]]+\]\s*/, ''); }
+function issueTag(s) { var m = String(s).match(/^\s*\[([^\]]+)\]/); return m ? m[1] : ''; }
+
 function renderNoteCard(note) {
   var hasAnyFlag = noteHasAnyFlag(note);
-  var cardClass = 'note-card' + (note.reviewed ? ' reviewed' : (hasAnyFlag ? ((note.concern_flagged || note.ai_concern_flagged) ? ' concern' : ' itp') : ''));
-  var badges = '';
-  if (note.concern_flagged) badges += '<span class="badge badge-concern">Concern (self-reported)</span>';
-  if (note.itp_flagged) badges += '<span class="badge badge-itp">ITP</span>';
-  // AI safety-net flag: caught in the narrative text independent of whatever
-  // the PRS toggled. When this is true but concern_flagged is false, that's
-  // the exact case worth leadership's attention -- a risk the PRS didn't
-  // self-report but that showed up in the writing.
-  if (note.ai_concern_flagged && !note.concern_flagged) {
-    badges += '<span class="badge badge-concern">&#9888; AI-detected risk (not self-reported)</span>';
-  } else if (note.ai_concern_flagged) {
-    badges += '<span class="badge badge-concern">AI-confirmed</span>';
-  }
-  if (note.other_flags && note.other_flags.length) {
-    note.other_flags.forEach(function(f){ badges += '<span class="badge badge-other">' + escapeHtml(f) + '</span>'; });
-  }
+  var tone = note.reviewed ? ' reviewed' : (hasAnyFlag ? ((note.concern_flagged || note.ai_concern_flagged || isUnknownAuthor(note)) ? ' concern' : ' itp') : '');
+  var fmtD = function(d){ return d ? new Date(d).toLocaleDateString() : ''; };
+  var dateStr = note.session_date ? new Date(note.session_date + 'T00:00:00').toLocaleDateString() : '—';
   var simMatches = noteSimilarity[note.id] || [];
-  if (simMatches.some(function(x){ return x.crossClient; })) badges += '<span class="badge badge-concern">Possible copy-paste between clients</span>';
-  if (simMatches.some(function(x){ return !x.crossClient; })) badges += '<span class="badge badge-itp">Repetitive language</span>';
-  if (isUnknownAuthor(note)) badges += '<span class="badge badge-concern">Unknown author</span>';
-  if (note.director_escalated) badges += '<span class="badge badge-director-escalated">Escalated to Director</span>';
-  if (note.escalated) badges += '<span class="badge badge-escalated">Escalated to Clinical</span>';
-  if (note.compliance_grade === 'Non-Compliant') badges += '<span class="badge badge-concern">Non-Compliant</span>';
-  else if (note.compliance_grade === 'Needs Improvement') badges += '<span class="badge badge-itp">Needs Improvement</span>';
-  else if (note.compliance_grade === 'Compliant') badges += '<span class="badge badge-reviewed">Compliant</span>';
-  if (note.reviewed && note.review_outcome === 'approved') badges += '<span class="badge badge-reviewed">Approved</span>';
-  if (note.reviewed && note.review_outcome === 'rejected') badges += '<span class="badge badge-rejected">Sent Back to Coach</span>';
-  if (note.ur_referred) badges += '<span class="badge badge-escalated">Utilization Review' + (note.ur_resolved ? ' \u2713' : '') + '</span>';
-  if (isAwaitingScan(note)) badges += '<span class="badge badge-other">Awaiting scan</span>';
-  if (!badges) badges = '<span class="badge badge-other">Scanned — routine note</span>';
 
+  // ── Status chips (right side): only where the note IS, not why it's flagged.
+  var status = [];
+  if (note.reviewed && note.review_outcome === 'approved') status.push('<span class="badge badge-reviewed">Approved</span>');
+  if (note.reviewed && note.review_outcome === 'rejected') status.push('<span class="badge badge-rejected">Sent back</span>');
+  if (note.director_escalated) status.push('<span class="badge badge-director-escalated">Director' + (note.director_escalated_ack ? ' ✓' : '') + '</span>');
+  if (note.escalated) status.push('<span class="badge badge-escalated">Clinical Dir.' + (note.resolved ? ' ✓' : '') + '</span>');
+  if (note.ur_referred) status.push('<span class="badge badge-escalated">UR' + (note.ur_resolved ? ' ✓' : '') + '</span>');
+  if (isAwaitingScan(note)) status.push('<span class="badge badge-other">Awaiting scan</span>');
+
+  // ── One-line "why flagged".
+  var reasons = flagSummary(note);
+  var whyHtml = reasons.length
+    ? '<div class="nc-why">' + reasons.map(function(r){ return '<span class="why-chip why-' + r.c + '">' + escapeHtml(r.t) + '</span>'; }).join('') + '</div>'
+    : '<div class="nc-why"><span class="why-chip why-ok">' + (isAwaitingScan(note) ? 'Not scanned yet' : 'Routine — no flags') + '</span></div>';
+
+  // ── Details panel contents (hidden until "Review").
   var prompts = note.reviewed ? [] : reviewPrompts(note);
   var promptsHtml = prompts.length
-    ? '<div class="review-prompts"><div class="rp-title">What to review</div>' + prompts.map(function(p){ return '<div class="rp-item rp-' + p.level + '">' + escapeHtml(p.text) + '</div>'; }).join('') + '</div>'
+    ? '<div class="nc-section"><div class="nc-label">What to look at</div><ul class="nc-list">' + prompts.map(function(p){ return '<li class="rp-' + p.level + '">' + escapeHtml(p.text) + '</li>'; }).join('') + '</ul></div>'
     : '';
-
-  var complianceIssuesHtml = '';
-  if (note.compliance_issues && note.compliance_issues.length) {
-    complianceIssuesHtml = '<div class="concern-types">' + note.compliance_issues.map(function(t){ return '<span>' + escapeHtml(t) + '</span>'; }).join('') + '</div>';
-  }
-
-  var similarHtml = '';
-  if (simMatches.length) {
-    var shown = simMatches.slice().sort(function(a, b){ return b.sim - a.sim; }).slice(0, 3);
-    similarHtml = '<div class="similar-list">' + shown.map(function(x) {
-      var d = x.date ? new Date(x.date + 'T00:00:00').toLocaleDateString() : '?';
-      return Math.round(x.sim * 100) + '% match with ' + (x.crossClient ? ('client ' + escapeHtml(x.client || '?') + '\u2019s note') : 'this client\u2019s note') + ' from ' + d;
-    }).join('<br/>') + (simMatches.length > 3 ? ('<br/>+' + (simMatches.length - 3) + ' more') : '') + '</div>';
-  }
-
-  var concernTypesHtml = '';
-  if (note.concern_type && note.concern_type.length) {
-    concernTypesHtml = '<div class="concern-types">' + note.concern_type.map(function(t){ return '<span>' + escapeHtml(t) + '</span>'; }).join('') + '</div>';
-  }
-
-  var dateStr = note.session_date ? new Date(note.session_date + 'T00:00:00').toLocaleDateString() : '—';
-  var codeLabel = note.linkage_code ? (' <span class="divider">&middot;</span> ' + escapeHtml(note.linkage_code)) : '';
-  var providerLine = note.provider_email ? ('PRS: ' + escapeHtml(note.provider_email) + ' <span class="divider">&middot;</span> Manager: ' + escapeHtml(managerFor(note.provider_email)) + '<br/>') : '';
-
-  var reasonHtml = (note.review_outcome === 'rejected' && note.reject_reason)
-    ? '<div class="reject-reason-box">What to fix: ' + escapeHtml(note.reject_reason) + '</div>' : '';
-  var urHtml = '';
-  if (note.ur_referred) {
-    urHtml = '<div class="escalated-tag">Referred to Utilization Review by ' + escapeHtml(note.ur_referred_by || '—') + (note.ur_referred_date ? (' on ' + new Date(note.ur_referred_date).toLocaleDateString()) : '') + (note.ur_reason ? ('<br/><span style="color:var(--ink-soft);font-weight:400;">' + escapeHtml(note.ur_reason) + '</span>') : '') + '</div>'
-      + (note.ur_resolved
-          ? '<div class="resolved-tag">UR complete \u2014 ' + escapeHtml(note.ur_resolved_by || '—') + (note.ur_outcome ? ('<br/><span style="color:var(--ink-soft);font-weight:400;">' + escapeHtml(note.ur_outcome) + '</span>') : '') + '</div>'
-          : '<button class="ack-btn" id="urDoneBtn_' + note.id + '" style="margin-top:6px;width:100%;">Mark UR Complete</button>');
-  }
-  var directorEscalatedHtml = note.director_escalated
-    ? '<div class="escalated-tag director">Escalated to Director' + (note.director_escalated_to ? (' (' + escapeHtml(note.director_escalated_to) + ')') : '') + ' by ' + escapeHtml(note.director_escalated_by || '—') + (note.director_escalated_date ? (' on ' + new Date(note.director_escalated_date).toLocaleDateString()) : '') + '</div>'
+  var issuesHtml = (note.compliance_issues && note.compliance_issues.length)
+    ? '<div class="nc-section"><div class="nc-label">Documentation issues' + (note.compliance_score != null ? ' <span class="nc-score">score ' + escapeHtml(String(note.compliance_score)) + '/100</span>' : '') + '</div><ul class="nc-list">'
+      + note.compliance_issues.map(function(i){ var tag = issueTag(i); return '<li>' + (tag ? '<b>' + escapeHtml(tag) + ':</b> ' : '') + escapeHtml(stripIssueTag(i)) + '</li>'; }).join('') + '</ul></div>'
     : '';
-  var directorAckHtml = '';
-  if (note.director_escalated) {
-    directorAckHtml = note.director_escalated_ack
-      ? '<div class="resolved-tag" style="color:var(--thrive-blue);">Acknowledged by ' + escapeHtml(note.director_escalated_ack_by || '—') + (note.director_escalated_ack_date ? (' on ' + new Date(note.director_escalated_ack_date).toLocaleDateString()) : '') + '</div>'
-      : '<button class="ack-btn" id="ackDirectorBtn_' + note.id + '" style="margin-top:6px;width:100%;">Acknowledge</button>';
-  }
-  var escalatedNoteHtml = note.escalated
-    ? '<div class="escalated-tag">Escalated to Clinical Director by ' + escapeHtml(note.escalated_by || '—') + (note.escalated_date ? (' on ' + new Date(note.escalated_date).toLocaleDateString()) : '') + '</div>'
-      + (note.resolved
-          ? '<div class="resolved-tag">Resolved in Clinical Director Hub by ' + escapeHtml(note.resolved_by || '—') + (note.resolved_date ? (' on ' + new Date(note.resolved_date).toLocaleDateString()) : '') + (note.resolution_notes ? ('<br/><span style="color:var(--ink-soft);font-weight:400;">' + escapeHtml(note.resolution_notes) + '</span>') : '') + '</div>'
-          : '<div class="escalated-tag" style="color:var(--muted);font-weight:500;">Awaiting review in Clinical Director Hub</div>')
-    : '';
+  var concernHtml = (note.concern_type && note.concern_type.length)
+    ? '<div class="nc-section"><div class="nc-label">Concern type</div><div class="nc-plain">' + note.concern_type.map(escapeHtml).join(', ') + '</div></div>' : '';
+  var simHtml = simMatches.length
+    ? '<div class="nc-section"><div class="nc-label">Similar notes</div><ul class="nc-list">' + simMatches.slice().sort(function(a, b){ return b.sim - a.sim; }).slice(0, 3).map(function(x){
+        return '<li>' + Math.round(x.sim * 100) + '% match with ' + (x.crossClient ? ('client ' + escapeHtml(x.client || '?') + '’s note') : 'this client’s note') + ' from ' + (x.date ? new Date(x.date + 'T00:00:00').toLocaleDateString() : '?') + '</li>';
+      }).join('') + '</ul></div>' : '';
 
-  var actionsHtml;
-  if (note.reviewed) {
-    actionsHtml = '<div class="reviewed-note">' + (note.review_outcome === 'rejected' ? 'Sent back to coach' : 'Approved') + ' by ' + escapeHtml(note.reviewed_by || '—')
-      + '<br/>' + (note.reviewed_date ? new Date(note.reviewed_date).toLocaleString() : '') + '</div>' + reasonHtml + directorEscalatedHtml + directorAckHtml + escalatedNoteHtml + urHtml;
-  } else {
-    actionsHtml = '<div class="action-row">'
-      + '<button class="action-btn approve" id="approveBtn_' + note.id + '">Approve</button>'
-      + '<button class="action-btn reject" id="rejectBtn_' + note.id + '">Send Back to Coach</button>'
-      + (note.director_escalated ? '' : '<button class="action-btn escalate" id="escalateDirectorBtn_' + note.id + '">Escalate to Director</button>')
-      + (note.escalated ? '' : '<button class="action-btn escalate" id="escalateClinicalBtn_' + note.id + '">Escalate to Clinical Director</button>')
-      + (note.ur_referred ? '' : '<button class="action-btn escalate" id="urBtn_' + note.id + '">Refer to Utilization Review</button>')
-      + '</div>' + directorEscalatedHtml + directorAckHtml + escalatedNoteHtml + urHtml;
-  }
+  // Escalation / review history, shown in the details panel.
+  var history = [];
+  if (note.reviewed) history.push((note.review_outcome === 'rejected' ? 'Sent back to coach' : 'Approved') + ' by ' + escapeHtml(note.reviewed_by || '—') + (note.reviewed_date ? ' on ' + fmtD(note.reviewed_date) : '') + ((note.review_outcome === 'rejected' && note.reject_reason) ? ' — “' + escapeHtml(note.reject_reason) + '”' : ''));
+  if (note.director_escalated) history.push('Escalated to Director' + (note.director_escalated_to ? ' (' + escapeHtml(note.director_escalated_to) + ')' : '') + ' by ' + escapeHtml(note.director_escalated_by || '—') + (note.director_escalated_date ? ' on ' + fmtD(note.director_escalated_date) : '') + (note.director_escalated_ack ? ' — acknowledged by ' + escapeHtml(note.director_escalated_ack_by || '—') : ''));
+  if (note.escalated) history.push('Escalated to Clinical Director by ' + escapeHtml(note.escalated_by || '—') + (note.escalated_date ? ' on ' + fmtD(note.escalated_date) : '') + (note.resolved ? ' — resolved by ' + escapeHtml(note.resolved_by || '—') + (note.resolution_notes ? ': ' + escapeHtml(note.resolution_notes) : '') : ' — awaiting Clinical Director Hub'));
+  if (note.ur_referred) history.push('Referred to Utilization Review by ' + escapeHtml(note.ur_referred_by || '—') + (note.ur_referred_date ? ' on ' + fmtD(note.ur_referred_date) : '') + (note.ur_reason ? ' — “' + escapeHtml(note.ur_reason) + '”' : '') + (note.ur_resolved ? ' — complete' + (note.ur_outcome ? ': ' + escapeHtml(note.ur_outcome) : '') : ''));
+  var historyHtml = history.length ? '<div class="nc-section"><div class="nc-label">History</div><ul class="nc-list">' + history.map(function(h){ return '<li>' + h + '</li>'; }).join('') + '</ul></div>' : '';
 
   var hasNoteText = note.description_text || note.assessment_text || note.plan_text;
-  var partialSections = hasNoteText && (!note.description_text || !note.assessment_text || !note.plan_text);
-  var missingParts = [];
-  if (partialSections) {
-    if (!note.description_text) missingParts.push('Description');
-    if (!note.assessment_text) missingParts.push('Assessment');
-    if (!note.plan_text) missingParts.push('Plan');
-  }
-  var partialWarningHtml = partialSections
-    ? '<p class="partial-note-text">Note: ' + missingParts.join(' and ') + ' section' + (missingParts.length > 1 ? 's' : '') + ' did not save with this entry — review the source note in Pimsy for the full text.</p>'
+  var missing = [];
+  if (hasNoteText) { if (!note.description_text) missing.push('Description'); if (!note.assessment_text) missing.push('Assessment'); if (!note.plan_text) missing.push('Plan'); }
+  var noteTextHtml = hasNoteText
+    ? '<div class="nc-section"><div class="nc-label">Note</div>'
+      + (missing.length ? '<p class="partial-note-text">' + missing.join(' and ') + ' did not save — check the source note in Pimsy.</p>' : '')
+      + '<div class="nc-note"><div class="nc-note-h">Description</div><p>' + escapeHtml(note.description_text || '—') + '</p>'
+      + '<div class="nc-note-h">Assessment</div><p>' + escapeHtml(note.assessment_text || '—') + '</p>'
+      + '<div class="nc-note-h">Plan</div><p>' + escapeHtml(note.plan_text || '—') + '</p></div></div>'
+    : '<div class="nc-section"><p class="no-note-text">No note text was saved for this entry — review the source note in Pimsy.</p></div>';
+  var emailHtml = note.provider_email
+    ? '<div class="nc-section"><div class="nc-label">Message the coach (optional)</div><textarea class="nc-textarea" id="emailMsg_' + note.id + '" placeholder="e.g. Can you take another look at the Plan section?"></textarea>'
+      + '<button class="nc-btn ghost" id="emailBtn_' + note.id + '">Email ' + escapeHtml(coachName(note.provider_email)) + '</button></div>'
     : '';
-  var noteContentHtml = hasNoteText ? `
-    ${partialWarningHtml}
-    <div class="field-block">
-      <div class="eyebrow">Description of Session</div>
-      <p>${escapeHtml(note.description_text || '—')}</p>
-    </div>
-    <div class="field-block">
-      <div class="eyebrow">Assessment of Progress</div>
-      <p>${escapeHtml(note.assessment_text || '—')}</p>
-    </div>
-    <div class="field-block">
-      <div class="eyebrow">Plans for Follow-Up</div>
-      <p>${escapeHtml(note.plan_text || '—')}</p>
-    </div>
-  ` : '<p class="no-note-text">No note text was generated or saved for this entry — this usually means the note generator did not produce recognizable output. Review the source note in Pimsy directly.</p>';
 
-  var emailBlockHtml = note.provider_email ? `
-    <div class="email-block">
-      <label>Message to Provider (Optional)</label>
-      <textarea id="emailMsg_${note.id}" placeholder="e.g. Can you take another look at the Assessment section on this one?"></textarea>
-      <button class="email-btn" id="emailBtn_${note.id}">Email Provider</button>
-      <div class="email-hint">Opens your email client addressed to the PRS, with the full note text included for reference.</div>
-    </div>
-  ` : '<div class="email-block"><p class="no-email-note">No provider email on file for this note.</p></div>';
+  // ── Action bar: two primary actions, escalations tucked in a menu.
+  var acts = '';
+  if (!note.reviewed) {
+    var escItems = ''
+      + (note.director_escalated ? '' : '<button class="nc-menu-item" id="escalateDirectorBtn_' + note.id + '">To Director</button>')
+      + (note.escalated ? '' : '<button class="nc-menu-item" id="escalateClinicalBtn_' + note.id + '">To Clinical Director</button>')
+      + (note.ur_referred ? '' : '<button class="nc-menu-item" id="urBtn_' + note.id + '">To Utilization Review</button>');
+    acts += '<button class="nc-btn approve" id="approveBtn_' + note.id + '">Approve</button>'
+      + '<button class="nc-btn send" id="rejectBtn_' + note.id + '">Send back to coach</button>'
+      + (escItems ? '<details class="nc-menu"><summary class="nc-btn ghost">Escalate ▾</summary><div class="nc-menu-pop">' + escItems + '</div></details>' : '');
+  }
+  if (note.director_escalated && !note.director_escalated_ack) acts += '<button class="nc-btn ghost" id="ackDirectorBtn_' + note.id + '">Acknowledge escalation</button>';
+  if (note.ur_referred && !note.ur_resolved) acts += '<button class="nc-btn ghost" id="urDoneBtn_' + note.id + '">Mark UR complete</button>';
+  acts += '<button class="nc-btn link collapse-toggle-lite" id="collapseToggle_' + note.id + '">Review note ▾</button>';
 
   return `
-    <div class="${cardClass}">
-      <div class="note-top">
-        <div class="note-meta">
-          <span class="client">${escapeHtml(note.client_number || 'No client #')}</span>${codeLabel} <span class="divider">&middot;</span> ${escapeHtml(note.program || '—')}<br/>
-          ${providerLine}
-          Session date: ${dateStr}
-          <div class="badge-row">${badges}</div>
-          ${concernTypesHtml}
-          ${complianceIssuesHtml}
-          ${similarHtml}
-          ${promptsHtml}
-          <button class="collapse-toggle" id="collapseToggle_${note.id}" style="display:block;margin-top:10px;">Show note &amp; provider contact</button>
+    <div class="note-card nc${tone}">
+      <div class="nc-head">
+        ${(!note.reviewed && currentMode === 'flagged') ? '<input type="checkbox" class="nc-check" data-id="' + escapeHtml(String(note.id)) + '"' + (selectedIds[note.id] ? ' checked' : '') + ' title="Select for bulk approve"/>' : ''}
+        <div class="nc-main">
+          <div class="nc-title"><span class="client">${escapeHtml(note.client_number || 'No client #')}</span><span class="nc-dot">·</span>${escapeHtml(note.program || '—')}<span class="nc-dot">·</span>${dateStr}</div>
+          <div class="nc-sub"><span title="${escapeHtml(note.provider_email || '')}">${escapeHtml(coachName(note.provider_email))}</span>${note.provider_email ? ' · ' + escapeHtml(managerFor(note.provider_email)) : ''}</div>
         </div>
-        <div class="note-actions">${actionsHtml}</div>
+        <div class="nc-status">${status.join('')}</div>
       </div>
-      <div class="note-content" id="noteContent_${note.id}" style="display:none;">
-        ${noteContentHtml}
-        ${emailBlockHtml}
+      ${whyHtml}
+      <div class="nc-actions">${acts}</div>
+      <div class="note-content nc-details" id="noteContent_${note.id}" style="display:none;">
+        ${promptsHtml}${issuesHtml}${concernHtml}${simHtml}${historyHtml}${noteTextHtml}${emailHtml}
       </div>
     </div>
   `;
@@ -2200,16 +2468,16 @@ function renderFlagExplainerHtml() {
   return `
     <details class="flag-explainer">
       <summary>How flags work on this scorecard</summary>
-      <p style="margin-top:8px;">A <strong>flag</strong> here means a documentation pattern worth a coaching conversation &mdash; not that the PRS reported something. A note is flagged if any of these are true:</p>
+      <p style="margin-top:8px;">A <strong>flag</strong> here means a documentation pattern worth a coaching conversation &mdash; not that the coach reported something. A note is flagged if any of these are true:</p>
       <ul>
         <li><strong>Documentation grade</strong> &mdash; graded Needs Improvement or Non-Compliant against the five UM standards (individualization, goal link to the treatment plan, scope, progress/skill-building, forward plan).</li>
         <li><strong>Repetitive language</strong> &mdash; ${pct(SIM_THRESHOLD)}+ of the note's phrasing matches another note for the <em>same client</em> within ${SIM_WINDOW_DAYS} days (whole note, or Assessment + Plan alone).</li>
         <li><strong>Possible copy-paste</strong> &mdash; the same match, but against a note for a <em>different client</em>.</li>
-        <li><strong>Safety concern not self-reported</strong> &mdash; the AI scan found a possible risk in the narrative but the PRS didn't toggle the concern flag.</li>
+        <li><strong>Safety concern not self-reported</strong> &mdash; the AI scan found a possible risk in the narrative but the coach didn't toggle the concern flag.</li>
       </ul>
-      <p><strong>Not counted as flags:</strong> self-reported concerns and ITP-update flags. Those mean the PRS is doing their job; they're shown in the Self-Rep. / ITP columns and the Safety Trend tab.</p>
-      <p><strong>Red row (coaching indicator)</strong> &mdash; any one of: ${pct(COACHING.docRate)}+ of graded notes need improvement (min ${COACHING.minGraded} graded); ${pct(COACHING.repeatRate)}+ of notes repetitive; ${COACHING.aiOnlyMin}+ safety concerns not self-reported; or ${COACHING.crossClientMin}+ possible copy-paste between clients. All but copy-paste need ${COACHING.minNotes}+ notes, since small counts produce noisy rates. The reason is listed under the provider's name.</p>
-      <p><strong>Team pattern</strong> &mdash; the same theme shows up 2+ times for each of at least 2 providers, covering ${pct(COACHING.teamShare)}+ of that manager's team. That usually points at team training or manager support, not one person.</p>
+      <p><strong>Not counted as flags:</strong> self-reported concerns and ITP-update flags. Those mean the coach is doing their job; they're shown in the Self-Rep. / ITP columns and the Safety Trend tab.</p>
+      <p><strong>Red row (coaching indicator)</strong> &mdash; any one of: ${pct(COACHING.docRate)}+ of graded notes need improvement (min ${COACHING.minGraded} graded); ${pct(COACHING.repeatRate)}+ of notes repetitive; ${COACHING.aiOnlyMin}+ safety concerns not self-reported; or ${COACHING.crossClientMin}+ possible copy-paste between clients. All but copy-paste need ${COACHING.minNotes}+ notes, since small counts produce noisy rates. The reason is listed under the coach's name.</p>
+      <p><strong>Team pattern</strong> &mdash; the same theme shows up 2+ times for each of at least 2 coaches, covering ${pct(COACHING.teamShare)}+ of that manager's team. That usually points at team training or manager support, not one person.</p>
       <p style="color:var(--muted);">Thresholds are a starting point and can be tuned. Documentation flags depend on grading having been run on these notes &mdash; the Graded column shows coverage.</p>
     </details>
   `;
@@ -2237,7 +2505,7 @@ function renderManagerRollupHtml(rollup) {
     <div class="lead-section-title" style="font-size:15px;margin-top:4px;">By Manager</div>
     <div class="lead-section-sub">Team-wide patterns suggest a training or supervision opportunity at the manager level.</div>
     <div class="table-scroll"><table class="lead-table" style="margin-bottom:24px;">
-      <thead><tr><th>Manager</th><th>Providers</th><th>Notes</th><th>Flagged</th><th>Flag Rate</th><th>Need Support</th><th>Team Patterns</th></tr></thead>
+      <thead><tr><th>Manager</th><th>Coaches</th><th>Notes</th><th>Flagged</th><th>Flag Rate</th><th>Need Support</th><th>Team Patterns</th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>
   `;
@@ -2265,8 +2533,8 @@ function renderProviderScorecardHtml(scorecard) {
     var focus = p.focus.length ? p.focus.map(function(t){ return escapeHtml(COACHING_THEMES[t]) + ' (' + p.themes[t] + ')'; }).join('<br/>') : '<span style="color:var(--muted)">&mdash;</span>';
     var canDrill = p.provider !== '(no provider email on file)';
     return `
-      <tr class="${isHighRisk ? 'high-risk' : ''}${canDrill ? ' clickable' : ''}" ${canDrill ? 'data-provider="' + escapeHtml(p.provider) + '" title="View all of this provider’s notes in Note Review"' : ''}>
-        <td class="provider-cell">${escapeHtml(p.provider)}${isHighRisk ? '<div class="reason-list">' + p.reasons.map(escapeHtml).join('<br/>') + '</div>' : ''}</td>
+      <tr class="${isHighRisk ? 'high-risk' : ''}${canDrill ? ' clickable' : ''}" ${canDrill ? 'data-provider="' + escapeHtml(p.provider) + '" title="View all of this coach’s notes"' : ''}>
+        <td class="provider-cell" title="${escapeHtml(p.provider)}">${escapeHtml(canDrill ? coachName(p.provider) : p.provider)}${isHighRisk ? '<div class="reason-list">' + p.reasons.map(escapeHtml).join('<br/>') + '</div>' : ''}</td>
         <td>${escapeHtml(p.manager)}</td>
         <td class="num">${p.total}</td>
         <td class="num">${p.flagged}</td>
@@ -2285,13 +2553,13 @@ function renderProviderScorecardHtml(scorecard) {
   return renderFlagExplainerHtml() + toolbar
     + renderManagerRollupHtml(computeManagerRollup(visible))
     + `
-    <div class="lead-section-title" style="font-size:15px;">By Provider</div>
-    <div class="lead-section-sub">Click any row to open all of that provider’s notes &mdash; flagged and routine &mdash; in Note Review.</div>
+    <div class="lead-section-title" style="font-size:15px;">By Coach</div>
+    <div class="lead-section-sub">Click any row to open all of that coach’s notes &mdash; flagged and routine.</div>
     <div class="table-scroll"><table class="lead-table compact">
       <thead><tr>
-        <th>Provider</th><th>Manager</th><th>Notes</th><th>Flagged</th><th>Flag Rate</th><th>AI-Only</th><th title="Repetitive language + possible copy-paste between clients">Repetitive</th><th>Graded</th><th title="Self-reported concerns / ITP-update flags. Informational, not counted as flags.">Self-Rep/ITP</th><th>Escalated</th><th>Coaching Focus</th><th></th>
+        <th>Coach</th><th>Manager</th><th>Notes</th><th>Flagged</th><th>Flag Rate</th><th>AI-Only</th><th title="Repetitive language + possible copy-paste between clients">Repetitive</th><th>Graded</th><th title="Self-reported concerns / ITP-update flags. Informational, not counted as flags.">Self-Rep/ITP</th><th>Escalated</th><th>Coaching Focus</th><th></th>
       </tr></thead>
-      <tbody>${rows || '<tr><td colspan="12" style="color:var(--muted)">No providers for this manager in this window.</td></tr>'}</tbody>
+      <tbody>${rows || '<tr><td colspan="12" style="color:var(--muted)">No coaches for this manager in this window.</td></tr>'}</tbody>
     </table></div>
   `;
 }
@@ -2619,22 +2887,30 @@ function renderLeadershipSubContent() {
     html = `
       <div class="lead-section">
         <div class="lead-section-title">Documentation Compliance by Program</div>
-        <div class="lead-section-sub">Every note graded against the UM framework standards, not just flagged ones.</div>
+        <div class="lead-section-sub">Every note graded against the UM framework standards, not just flagged ones. Grading runs automatically every 10 minutes.</div>
+        ${currentReviewer.role === 'org_wide' ? '<div style="margin:-4px 0 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;"><button class="refresh-btn" id="gradeBatchBtn" title="Grade the 25 oldest ungraded notes now">Grade oldest 25 now</button><span id="gradeBatchStatus" class="lead-section-sub" style="margin:0;">' + escapeHtml(lastBackfillMsg) + '</span></div>' : ''}
         ${renderComplianceRollupHtml(d.compliance)}
       </div>
     `;
   } else if (leadershipSubTab === 'providers') {
     html = `
       <div class="lead-section">
-        <div class="lead-section-title">Provider Coaching Scorecard</div>
-        <div class="lead-section-sub">Last ${COACHING.windowDays} days. A supervision and coaching lens &mdash; where a PRS or a whole team could use support with documentation &mdash; not a compliance scoreboard.</div>
+        <div class="lead-section-title">Coaching Scorecard</div>
+        <div class="lead-section-sub">Last ${COACHING.windowDays} days. A supervision and coaching lens &mdash; where a coach or a whole team could use support with documentation &mdash; not a compliance scoreboard.</div>
         ${renderProviderScorecardHtml(d.scorecard)}
       </div>
     `;
   }
   el.innerHTML = html;
   if (leadershipSubTab === 'providers') bindProviderScorecard();
+  var gb = document.getElementById('gradeBatchBtn');
+  if (gb) gb.onclick = gradeNextBatch;
 }
+
+// Close any open Escalate menu when clicking elsewhere.
+document.addEventListener('click', function(e) {
+  document.querySelectorAll('details.nc-menu[open]').forEach(function(d){ if (!d.contains(e.target)) d.removeAttribute('open'); });
+});
 
 // ── INIT ──
 (async function init() {
