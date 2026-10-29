@@ -849,7 +849,7 @@ function renderShell(loading) {
           <span id="lastSyncedLabel" title="This list only updates when you sign in or hit Refresh — it does not auto-poll." style="font-size:11px;color:#6B7280;align-self:center;white-space:nowrap">Synced: ${fmtLastSynced(lastSyncedAt)}</span>
         </div>
         <div id="scanStatus" class="scan-status"></div>
-        <div id="gradeBatchStatus" class="lead-section-sub" style="margin-top:-4px;"></div>
+        <div id="gradeBatchStatus" class="lead-section-sub" style="margin-top:-4px;">${escapeHtml(lastBackfillMsg)}</div>
         <div id="listCount" class="list-count"></div>
         <div id="notesList">${loading ? '<div class="loading-state">Loading notes&hellip;</div>' : ''}</div>
       </div>
@@ -1305,91 +1305,44 @@ async function completeUtilizationReview(note) {
 // leadership can watch it work and control the pace/cost.
 // ══════════════════════════════════════════════════════════════════
 
-var COMPLIANCE_RUBRIC = 'You are grading Peer Recovery Supporter (PRS) DAP progress notes for a CARF-accredited peer support agency against five documentation standards used by the agency\'s Utilization Review Committee:\n\n'
-  + '1. INDIVIDUALIZATION: Is the note specific to this Peer and this session, or could it be swapped into another client\'s chart unchanged?\n'
-  + '2. GOAL LINK: Does the note connect the peer\'s intervention to a specific goal on the Peer\'s treatment plan (ITP), with measurable progress, setback, or status -- not just generic strengths language?\n'
-  + '3. SCOPE OF PRACTICE: Does the note stay within peer support scope (lived experience, mutuality, self-determination) rather than describing clinical/case-management activity (assessing symptoms, delivering therapy, diagnosing)?\n'
-  + '4. PROGRESS ORIENTATION: Does the note reflect where the Peer stands relative to their goals and document movement, skill-building, or a meaningful setback -- not just a routine check-in or what happened in the room?\n'
-  + '5. FORWARD PLAN: Is there a concrete, specific next step (not "continue services" or similarly vague filler)?\n\n'
-  + 'You will receive a JSON array of notes, each with an "id" and its "description", "assessment", and "plan" text. For EACH note, return a grade:\n'
-  + '- "Compliant": meets all five standards adequately\n'
-  + '- "Needs Improvement": meets most standards but has 1-2 clear gaps\n'
-  + '- "Non-Compliant": missing multiple standards, or is too generic/templated to be individualized, or strays outside PRS scope of practice\n\n'
-  + 'Return ONLY a JSON array, no other text, in this exact shape: [{"id": "<the id you were given>", "grade": "Compliant" | "Needs Improvement" | "Non-Compliant", "score": <0-100 integer>, "issues": [<short strings, each naming ONE specific gap you found and starting with the standard it falls under in brackets -- one of [Individualization], [Goal Link], [Scope], [Progress], [Plan] -- omit this key or use an empty array if Compliant>]}]. Be specific in "issues" -- e.g. "[Goal Link] Assessment restates status generically instead of naming the ITP goal and a measurable action" rather than "needs more detail."';
+// The grading rubric lives in the grade-notes Edge Function (edge/grade-notes/index.ts).
 
-// Grades one batch (array of {id, description_text, assessment_text, plan_text})
-// and writes results to Supabase. Returns { ok, updates: [{id, ...fields}], counts, blank, error }.
-async function gradeBatch(batch) {
-  var now = new Date().toISOString();
-  var updates = [];
-  var counts = { 'Compliant': 0, 'Needs Improvement': 0, 'Non-Compliant': 0 };
-  // Blank documentation is itself a compliance issue -- grade it directly
-  // instead of sending it to the API or leaving it stuck ungraded.
-  var blank = batch.filter(function(n) { return !n.description_text && !n.assessment_text && !n.plan_text; });
-  var gradable = batch.filter(function(n) { return n.description_text || n.assessment_text || n.plan_text; });
-  for (var i = 0; i < blank.length; i++) {
-    var bf = { compliance_grade: 'Non-Compliant', compliance_score: 0, compliance_issues: ['No note text was saved for this entry'], compliance_graded_at: now };
-    var br = await sb.from(TABLE).update(bf).eq('id', blank[i].id);
-    if (!br.error) updates.push(Object.assign({ id: blank[i].id }, bf));
-  }
-  if (!gradable.length) return { ok: true, updates: updates, counts: counts, blank: blank.length };
-
-  var payload = gradable.map(function(n) {
-    return { id: n.id, description: n.description_text || '', assessment: n.assessment_text || '', plan: n.plan_text || '' };
-  });
+// Grading runs in the Supabase Edge Function `grade-notes` (it holds the
+// Anthropic API key and also runs on a schedule via pg_cron -- see
+// SETUP.md). The tracker just asks it to grade the next batch.
+// Returns { ok, updates: [{id, ...fields}], counts, blank, remaining, error }.
+async function gradeViaFunction(opts) {
   try {
-    var response = await fetch('/functions/claude', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ system: COMPLIANCE_RUBRIC, messages: [{ role: 'user', content: JSON.stringify(payload) }] })
-    });
-    var data = await response.json();
-    if (!response.ok) throw new Error(data.error || 'API error');
-    var text = (data.content && data.content[0] && data.content[0].text) ? data.content[0].text : '';
-    var results = JSON.parse(text.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim());
-    // Only accept ids we actually sent -- guards against a model echoing a wrong id.
-    var validIds = {};
-    gradable.forEach(function(n){ validIds[String(n.id)] = n.id; });
-    for (var j = 0; j < results.length; j++) {
-      var r = results[j];
-      if (!r.id || !r.grade || !(String(r.id) in validIds)) continue;
-      counts[r.grade] = (counts[r.grade] || 0) + 1;
-      var f = { compliance_grade: r.grade, compliance_score: (typeof r.score === 'number') ? r.score : null, compliance_issues: r.issues || [], compliance_graded_at: now };
-      var ur = await sb.from(TABLE).update(f).eq('id', validIds[String(r.id)]);
-      if (!ur.error) updates.push(Object.assign({ id: validIds[String(r.id)] }, f));
+    var res = await sb.functions.invoke('grade-notes', { body: opts });
+    if (res.error) {
+      var msg = res.error.message || 'Edge Function error';
+      try { var ctx = res.error.context && await res.error.context.json(); if (ctx && ctx.error) msg = ctx.error; } catch (e) {}
+      return { ok: false, updates: [], counts: {}, error: new Error(msg) };
     }
-    return { ok: true, updates: updates, counts: counts, blank: blank.length };
+    var d = res.data || {};
+    if (d.error) return { ok: false, updates: d.updates || [], counts: d.counts || {}, error: new Error(d.error) };
+    return { ok: true, updates: d.updates || [], counts: d.counts || {}, blank: d.blank || 0, remaining: d.remaining, graded: d.graded || 0 };
   } catch (e) {
-    console.warn('[Compliance grading] failed', e);
-    return { ok: false, updates: updates, counts: counts, blank: blank.length, error: e };
+    return { ok: false, updates: [], counts: {}, error: e };
   }
 }
 
-// Manual backfill (org-wide only): oldest ungraded notes across the whole
-// table. Day-to-day scanning of new notes happens automatically below.
+// Manual backfill (org-wide only): oldest ungraded notes across the whole table.
+var lastBackfillMsg = ''; // survives the page re-render after a backfill
 async function gradeNextBatch() {
   if (!currentReviewer || currentReviewer.role !== 'org_wide') return;
   var btn = document.getElementById('gradeBatchBtn');
   var statusEl = document.getElementById('gradeBatchStatus');
   if (btn) { btn.disabled = true; btn.textContent = 'Grading…'; }
-  if (statusEl) statusEl.textContent = 'Fetching the oldest ungraded notes…';
-
-  var { data: batch, error: fetchErr } = await sb.from(TABLE)
-    .select('id, description_text, assessment_text, plan_text')
-    .is('compliance_graded_at', null)
-    .order('session_date', { ascending: true })
-    .limit(15);
-  if (fetchErr || !batch || !batch.length) {
-    if (statusEl) statusEl.textContent = fetchErr ? ('Error fetching batch: ' + fetchErr.message) : 'No ungraded notes remaining.';
-    if (btn) { btn.disabled = false; btn.textContent = 'Backfill Oldest'; }
-    return;
-  }
-  var out = await gradeBatch(batch);
+  if (statusEl) statusEl.textContent = 'Grading the oldest ungraded notes…';
+  var out = await gradeViaFunction({ limit: 25, order: 'oldest' });
   if (statusEl) {
+    var c = out.counts || {};
     statusEl.textContent = out.ok
-      ? ('Graded ' + out.updates.length + ' note(s): ' + out.counts['Compliant'] + ' compliant, ' + out.counts['Needs Improvement'] + ' needs improvement, ' + out.counts['Non-Compliant'] + ' non-compliant' + (out.blank ? (' (incl. ' + out.blank + ' with no saved text)') : '') + '. Click again for the next batch.')
-      : ('Grading failed: ' + out.error.message + '. Try again.');
+      ? (out.graded ? ('Graded ' + out.graded + ' note(s): ' + (c['Compliant'] || 0) + ' compliant, ' + (c['Needs Improvement'] || 0) + ' needs improvement, ' + (c['Non-Compliant'] || 0) + ' non-compliant. ' + (out.remaining != null ? out.remaining + ' still ungraded.' : '')) : 'No ungraded notes remaining.')
+      : ('Grading failed: ' + out.error.message);
   }
+  if (statusEl) lastBackfillMsg = statusEl.textContent;
   if (btn) { btn.disabled = false; btn.textContent = 'Backfill Oldest'; }
   await loadAndRenderDashboard();
 }
@@ -1399,7 +1352,7 @@ async function gradeNextBatch() {
 // graded in the background, newest first, so new notes get scanned without
 // anyone clicking a button. Capped per page visit to keep API cost bounded.
 // (Long-term this belongs server-side -- see SETUP.md.)
-var AUTO_SCAN = { enabled: true, batchSize: 15, maxPerVisit: 150 };
+var AUTO_SCAN = { enabled: true, batchSize: 15, maxPerVisit: 60 }; // the scheduled job does the bulk; this catches up the reviewer's own scope
 var autoScanRunning = false;
 var autoScanDone = 0;
 var autoScanNewlyFlagged = 0;
@@ -1412,17 +1365,11 @@ async function autoScanInBackground() {
   updateScanStatus();
   try {
     while (autoScanDone < AUTO_SCAN.maxPerVisit) {
-      var q = scopeNotesQuery(sb.from(TABLE)
-        .select('id, description_text, assessment_text, plan_text')
-        .is('compliance_graded_at', null)
-        .order('session_date', { ascending: false })
-        .order('id', { ascending: false }));
-      if (!q) break;
-      var res = await q.limit(AUTO_SCAN.batchSize);
-      if (res.error) { autoScanError = res.error.message; break; }
-      if (!res.data || !res.data.length) break;
-      var out = await gradeBatch(res.data);
-      autoScanDone += res.data.length;
+      var scope = scopedProviderEmails(); // null = org-wide
+      if (scope && !scope.length) break;
+      var out = await gradeViaFunction({ limit: AUTO_SCAN.batchSize, order: 'newest', providerEmails: scope });
+      if (out.ok && !out.updates.length) break; // nothing left to grade in scope
+      autoScanDone += Math.max(out.updates.length, 1);
       out.updates.forEach(function(u) {
         var n = allNotes.find(function(x){ return x.id === u.id; });
         if (!n) return;
