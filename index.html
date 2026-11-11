@@ -590,8 +590,132 @@ function computeNoteSimilarity(notes) {
   return result;
 }
 
+// ══════════════════════════════════════════════════════════════════
+// PROVISIONAL CHARTS (11/11/26)
+// In Pimsy the clinician writes a "Provisional Note" (provisional assessment),
+// then the full assessment ~30 days later as an "Assessment Note" (90791 /
+// H0001). Until then the treatment plan has generic goals, so "goal link"
+// documentation issues are expected and shouldn't send a note to review.
+// Status comes from the client_assessment_status view, filled by importing
+// the Pimsy notes export (org-wide: Filters > Import Pimsy notes export).
+// Clients are matched on the digits of the client # (C-C-39161 -> 39161).
+// ══════════════════════════════════════════════════════════════════
+var provisionalByClient = {};  // client key -> { p: provisional date, f: full assessment date or null }
+var PROVISIONAL_APPROVE_REASON = 'Provisional chart — generic goals expected until the full assessment';
+
+function clientKey(clientNumber) {
+  var m = String(clientNumber || '').match(/(\d+)(?!.*\d)/);
+  return m ? String(parseInt(m[1], 10)) : null;
+}
+
+function provisionalStatus(n) {
+  var s = provisionalByClient[clientKey(n.client_number)];
+  if (!s || !n.session_date) return null;
+  var d = String(n.session_date).slice(0, 10);
+  return (d >= s.p && (!s.f || d < s.f)) ? s : null;
+}
+function isProvisionalChart(n) { return !!provisionalStatus(n); }
+
+// ── Import from the Pimsy notes export ──
+// Reads the file in the browser and saves ONLY: client # digits, service date,
+// and whether the note was a provisional or full assessment. Names, note text,
+// diagnoses and insurance never leave the reviewer's computer.
+// Pimsy sometimes shifts a row's cells one column left when a field is blank,
+// so the note type is found by scanning left from the "Note Type" column, and
+// the billing code by searching the whole row.
+var XLSX_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+function loadXlsxLib() {
+  if (window.XLSX) return Promise.resolve();
+  return new Promise(function(resolve, reject){
+    var s = document.createElement('script');
+    s.src = XLSX_SRC; s.onload = resolve;
+    s.onerror = function(){ reject(new Error('Could not load the spreadsheet reader (cdnjs.cloudflare.com blocked?)')); };
+    document.head.appendChild(s);
+  });
+}
+function toIsoDate(v) {
+  if (v instanceof Date && !isNaN(v)) return v.getFullYear() + '-' + String(v.getMonth() + 1).padStart(2, '0') + '-' + String(v.getDate()).padStart(2, '0');
+  var s = String(v == null ? '' : v).trim(), m;
+  if ((m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))) return m[1] + '-' + m[2].padStart(2, '0') + '-' + m[3].padStart(2, '0');
+  if ((m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/))) return (m[3].length === 2 ? '20' + m[3] : m[3]) + '-' + m[1].padStart(2, '0') + '-' + m[2].padStart(2, '0');
+  return null;
+}
+function extractAssessmentEvents(rows) {
+  var hdr = (rows[0] || []).map(function(h){ return String(h == null ? '' : h).trim(); });
+  var iDate = hdr.indexOf('Service Date'), iClient = hdr.indexOf('Client #'), iType = hdr.indexOf('Note Type');
+  if (iDate < 0 || iClient < 0 || iType < 0) throw new Error('This doesn’t look like the Pimsy notes export (need Service Date, Client # and Note Type columns).');
+  var seen = {}, events = [], skipped = 0;
+  for (var r = 1; r < rows.length; r++) {
+    var row = rows[r] || [];
+    var type = null;
+    for (var j = iType; j >= Math.max(0, iType - 3); j--) {
+      var v = String(row[j] == null ? '' : row[j]).trim();
+      if (!v || typeof row[j] === 'boolean' || /^(true|false)$/i.test(v)) continue;
+      type = v; break;
+    }
+    var ev = null;
+    if (type === 'Provisional Note') ev = 'provisional';
+    else if (type === 'Assessment Note' && row.some(function(c){ return typeof c === 'string' && /\((?:90791|H0001)\b/.test(c); })) ev = 'full';
+    if (!ev) continue;
+    var key = clientKey(row[iClient]), date = toIsoDate(row[iDate]);
+    if (!key || !date) { skipped++; continue; }
+    var id = key + '|' + ev + '|' + date;
+    if (seen[id]) continue;
+    seen[id] = true;
+    events.push({ client_key: key, event_type: ev, event_date: date });
+  }
+  return { events: events, skipped: skipped };
+}
+async function importPimsyExport(file) {
+  var st = document.getElementById('importPimsyStatus');
+  var say = function(t){ if (st) st.textContent = t; };
+  try {
+    say('Reading ' + file.name + '…');
+    await loadXlsxLib();
+    var wb = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true });
+    var rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true, defval: null });
+    var out = extractAssessmentEvents(rows);
+    if (!out.events.length) { say('No provisional or full assessment notes found in that file.'); return; }
+    var prov = out.events.filter(function(e){ return e.event_type === 'provisional'; }).length;
+    if (!confirm('Found ' + prov + ' provisional and ' + (out.events.length - prov) + ' full assessment notes. Save to update provisional charts? (Only client # digits, dates and note type are saved.)')) { say(''); return; }
+    say('Saving…');
+    for (var i = 0; i < out.events.length; i += 500) {
+      var res = await sb.from('client_assessment_events').upsert(out.events.slice(i, i + 500), { onConflict: 'client_key,event_type,event_date', ignoreDuplicates: true });
+      if (res.error) throw new Error(res.error.message);
+    }
+    await loadProvisionalStatus();
+    var open = Object.keys(provisionalByClient).filter(function(k){ return !provisionalByClient[k].f; }).length;
+    say('Imported. ' + open + ' charts currently provisional.' + (out.skipped ? ' (' + out.skipped + ' rows skipped: missing client # or date)' : ''));
+    refreshNotesView();
+  } catch (e) {
+    say('Import failed: ' + e.message);
+  }
+}
+
+async function loadProvisionalStatus() {
+  var res = await fetchAllRows(function(from, to) {
+    return sb.from('client_assessment_status').select('client_key, provisional_date, full_assessment_date')
+      .order('client_key', { ascending: true }).range(from, to);
+  });
+  if (res.error) { console.warn('Provisional chart status unavailable (run note_reviews_and_provisional.sql?)', res.error); return; }
+  var map = {};
+  (res.data || []).forEach(function(r){
+    var k = clientKey(r.client_key);
+    if (k) map[k] = { p: String(r.provisional_date).slice(0, 10), f: r.full_assessment_date ? String(r.full_assessment_date).slice(0, 10) : null };
+  });
+  provisionalByClient = map;
+}
+
+function isGoalLinkIssue(issue) { return issueTheme(issue) === 'goal_link'; }
+
 function isDocQualityFlag(n) {
-  return n.compliance_grade === 'Needs Improvement' || n.compliance_grade === 'Non-Compliant';
+  if (n.compliance_grade !== 'Needs Improvement' && n.compliance_grade !== 'Non-Compliant') return false;
+  // On a provisional chart, a grade driven only by goal-link issues is expected -- not a flag.
+  if (isProvisionalChart(n)) {
+    var issues = n.compliance_issues || [];
+    if (issues.length && issues.every(isGoalLinkIssue)) return false;
+  }
+  return true;
 }
 
 // Note-level coaching flags. Returns an array of theme keys.
@@ -771,6 +895,10 @@ function reviewPrompts(n) {
   if (same) {
     out.push({ level: 'coaching', text: 'Repeats this client’s note from ' + fmt(same.date) + ' (' + Math.round(same.sim * 100) + '%). Is the client moving toward their goals, or is the note being carried forward? Good for a coaching conversation; refer to Utilization Review if services may not be helping the client move forward.' });
   }
+  var prov = provisionalStatus(n);
+  if (prov) {
+    out.push({ level: 'info', text: 'Provisional chart: the full assessment isn’t done yet (provisional assessment ' + fmt(prov.p) + '), so treatment-plan goals are expected to be generic. Don’t send back for goal link alone.' });
+  }
   if (isDocQualityFlag(n)) {
     out.push({ level: 'coaching', text: 'Documentation graded ' + n.compliance_grade + ' (issues below). Send back to the coach if it needs revision before audit or billing.' });
   }
@@ -899,6 +1027,7 @@ async function loadAndRenderDashboard() {
   }
 
   allNotes = data || [];
+  await loadProvisionalStatus();
   noteSimilarity = computeNoteSimilarity(allNotes);
   lastSyncedAt = new Date();
   if (!landingChosen) {
@@ -988,6 +1117,7 @@ function renderShell(loading) {
               <option value="365">Last year</option>
               <option value="all">All time</option>
             </select>
+            ${currentReviewer.role === 'org_wide' ? '<button class="fb-btn" id="importPimsyBtn" title="Upload the Pimsy notes export (.xlsx) to update which charts are still provisional. Only client #, date and note type are saved.">Import Pimsy notes export</button><input type="file" id="importPimsyFile" accept=".xlsx,.xls,.csv" style="display:none"/><span id="importPimsyStatus" class="fb-synced"></span>' : ''}
           </div>
         </div>
         <div id="scanStatus" class="scan-status"></div>
@@ -1043,6 +1173,11 @@ function renderShell(loading) {
   };
   var groupChk = document.getElementById('groupByCoachChk');
   if (groupChk) groupChk.onchange = function(){ groupByCoach = groupChk.checked; renderNotesList(); };
+  var impBtn = document.getElementById('importPimsyBtn'), impFile = document.getElementById('importPimsyFile');
+  if (impBtn && impFile) {
+    impBtn.onclick = function(){ impFile.value = ''; impFile.click(); };
+    impFile.onchange = function(){ if (impFile.files && impFile.files[0]) importPimsyExport(impFile.files[0]); };
+  }
   updateMoreFiltersCount();
   updateScanStatus();
   document.querySelectorAll('.mode-tab').forEach(function(tab){
@@ -1406,18 +1541,41 @@ function showToast(msg, undoFn) {
   toastTimer = setTimeout(function(){ t.className = ''; }, 6000);
 }
 
-var UNREVIEW = { reviewed: false, reviewed_by: null, reviewed_date: null, review_outcome: null };
+// ── REVIEW ACTIONS (11/11/26) ──
+// Browser accounts can't UPDATE dap_note_analytics directly (that lockdown is
+// intentional). Every review action goes through the review_note_action()
+// database function instead (note_reviews_and_provisional.sql): it checks the
+// note is in the reviewer's scope, writes only the review columns, stamps the
+// reviewer's name server-side, and logs the action in note_reviews.
+// Returns { fields } on success or { error } -- fields are what the server saved.
+async function reviewAction(ids, action, opts) {
+  opts = opts || {};
+  var res = await sb.rpc('review_note_action', {
+    p_ids: ids.map(String), p_action: action,
+    p_reason: opts.reason == null ? null : String(opts.reason),
+    p_to: opts.to == null ? null : String(opts.to)
+  });
+  if (res.error) {
+    var msg = res.error.message || 'Unknown error';
+    if (/review_note_action/.test(msg) && /(not find|does not exist|schema cache)/i.test(msg)) {
+      msg = 'The review function isn’t set up in Supabase yet. Run note_reviews_and_provisional.sql, then try again.';
+    }
+    return { error: { message: msg } };
+  }
+  return { fields: res.data || {} };
+}
+
 async function undoReview(ids) {
-  var { error } = await sb.from(TABLE).update(UNREVIEW).in('id', ids);
-  if (error) { alert('Could not undo: ' + error.message); return; }
-  applyLocal(ids, UNREVIEW);
+  var r = await reviewAction(ids, 'unreview');
+  if (r.error) { alert('Could not undo: ' + r.error.message); return; }
+  applyLocal(ids, r.fields);
   showToast('Moved back to Needs Review');
 }
 
-async function approveIds(ids) {
-  var fields = { reviewed: true, reviewed_by: currentReviewer.name, reviewed_date: new Date().toISOString(), review_outcome: 'approved' };
-  var { error } = await sb.from(TABLE).update(fields).in('id', ids);
-  if (error) { alert('Could not save: ' + error.message); return false; }
+async function approveIds(ids, reason) {
+  var r = await reviewAction(ids, 'approve', { reason: reason });
+  if (r.error) { alert('Could not save: ' + r.error.message); return false; }
+  var fields = r.fields;
   applyLocal(ids, fields);
   showToast(ids.length === 1 ? 'Approved' : ids.length + ' notes approved', function(){ undoReview(ids); });
   return true;
@@ -1443,7 +1601,8 @@ async function resolveNote(noteId, outcome) {
   if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
 
   await fadeOutCard(noteId);
-  var ok = await approveIds([noteId]);
+  var note = allNotes.find(function(n){ return String(n.id) === String(noteId); });
+  var ok = await approveIds([noteId], (note && isProvisionalChart(note)) ? PROVISIONAL_APPROVE_REASON : null);
   if (!ok && btn) { btn.disabled = false; btn.textContent = 'Approve'; }
 }
 
@@ -1455,12 +1614,8 @@ async function rejectNote(note) {
   var btn = document.getElementById('rejectBtn_' + note.id);
   if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
 
-  var rejFields = {
-    reviewed: true, reviewed_by: currentReviewer.name,
-    reviewed_date: new Date().toISOString(), review_outcome: 'rejected',
-    reject_reason: reason || null
-  };
-  var { error } = await sb.from(TABLE).update(rejFields).eq('id', note.id);
+  var r = await reviewAction([note.id], 'reject', { reason: reason });
+  var error = r.error, rejFields = r.fields;
 
   if (error) {
     alert('Could not save: ' + error.message);
@@ -1501,12 +1656,8 @@ async function escalateToDirector(note) {
   // note on the director's hub tasks. director_escalated_to is kept purely as
   // a record of who the roster resolved to (useful for auditing / debugging a
   // bad roster mapping), not for addressing an email.
-  var dirFields = {
-    director_escalated: true, director_escalated_by: currentReviewer.name,
-    director_escalated_date: new Date().toISOString(),
-    director_escalated_to: directorName
-  };
-  var { error } = await sb.from(TABLE).update(dirFields).eq('id', note.id);
+  var r = await reviewAction([note.id], 'escalate_director', { to: directorName });
+  var error = r.error, dirFields = r.fields;
 
   if (error) {
     alert('Could not escalate to director: ' + error.message);
@@ -1524,11 +1675,8 @@ async function acknowledgeDirectorEscalation(note) {
   var btn = document.getElementById('ackDirectorBtn_' + note.id);
   if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
 
-  var ackFields = {
-    director_escalated_ack: true, director_escalated_ack_by: currentReviewer.name,
-    director_escalated_ack_date: new Date().toISOString()
-  };
-  var { error } = await sb.from(TABLE).update(ackFields).eq('id', note.id);
+  var r = await reviewAction([note.id], 'ack_director');
+  var error = r.error, ackFields = r.fields;
 
   if (error) {
     alert('Could not acknowledge: ' + error.message);
@@ -1546,11 +1694,8 @@ async function escalateToClinical(note) {
   var btn = document.getElementById('escalateClinicalBtn_' + note.id);
   if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
 
-  var clinFields = {
-    escalated: true, escalated_by: currentReviewer.name,
-    escalated_date: new Date().toISOString()
-  };
-  var { error } = await sb.from(TABLE).update(clinFields).eq('id', note.id);
+  var r = await reviewAction([note.id], 'escalate_clinical');
+  var error = r.error, clinFields = r.fields;
 
   if (error) {
     alert('Could not escalate to clinical: ' + error.message);
@@ -1573,11 +1718,8 @@ async function referToUtilizationReview(note) {
   if (reason === null) return;
   var btn = document.getElementById('urBtn_' + note.id);
   if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
-  var urFields = {
-    ur_referred: true, ur_referred_by: currentReviewer.name,
-    ur_referred_date: new Date().toISOString(), ur_reason: reason.trim() || null
-  };
-  var { error } = await sb.from(TABLE).update(urFields).eq('id', note.id);
+  var r = await reviewAction([note.id], 'refer_ur', { reason: reason.trim() || null });
+  var error = r.error, urFields = r.fields;
   if (error) {
     alert('Could not refer to Utilization Review: ' + urSetupMessage(error));
     if (btn) { btn.disabled = false; btn.textContent = 'To Utilization Review'; }
@@ -1592,11 +1734,8 @@ async function completeUtilizationReview(note) {
   if (outcome === null) return;
   var btn = document.getElementById('urDoneBtn_' + note.id);
   if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
-  var urDone = {
-    ur_resolved: true, ur_resolved_by: currentReviewer.name,
-    ur_resolved_date: new Date().toISOString(), ur_outcome: outcome.trim() || null
-  };
-  var { error } = await sb.from(TABLE).update(urDone).eq('id', note.id);
+  var r = await reviewAction([note.id], 'complete_ur', { reason: outcome.trim() || null });
+  var error = r.error, urDone = r.fields;
   if (error) {
     alert('Could not save: ' + urSetupMessage(error));
     if (btn) { btn.disabled = false; btn.textContent = 'Mark UR complete'; }
@@ -1788,6 +1927,8 @@ function renderNoteCard(note) {
   if (note.escalated) status.push('<span class="badge badge-escalated">Clinical Dir.' + (note.resolved ? ' ✓' : '') + '</span>');
   if (note.ur_referred) status.push('<span class="badge badge-escalated">UR' + (note.ur_resolved ? ' ✓' : '') + '</span>');
   if (isAwaitingScan(note)) status.push('<span class="badge badge-other">Awaiting scan</span>');
+  var provNote = isProvisionalChart(note);
+  if (provNote) status.push('<span class="badge badge-other" title="Full assessment not done yet — generic goals are expected">Provisional chart</span>');
 
   // ── One-line "why flagged".
   var reasons = flagSummary(note);
@@ -1802,7 +1943,7 @@ function renderNoteCard(note) {
     : '';
   var issuesHtml = (note.compliance_issues && note.compliance_issues.length)
     ? '<div class="nc-section"><div class="nc-label">Documentation issues' + (note.compliance_score != null ? ' <span class="nc-score">score ' + escapeHtml(String(note.compliance_score)) + '/100</span>' : '') + '</div><ul class="nc-list">'
-      + note.compliance_issues.map(function(i){ var tag = issueTag(i); return '<li>' + (tag ? '<b>' + escapeHtml(tag) + ':</b> ' : '') + escapeHtml(stripIssueTag(i)) + '</li>'; }).join('') + '</ul></div>'
+      + note.compliance_issues.map(function(i){ var tag = issueTag(i); return '<li>' + (tag ? '<b>' + escapeHtml(tag) + ':</b> ' : '') + escapeHtml(stripIssueTag(i)) + ((provNote && isGoalLinkIssue(i)) ? ' <i>(expected on a provisional chart)</i>' : '') + '</li>'; }).join('') + '</ul></div>'
     : '';
   var concernHtml = (note.concern_type && note.concern_type.length)
     ? '<div class="nc-section"><div class="nc-label">Concern type</div><div class="nc-plain">' + note.concern_type.map(escapeHtml).join(', ') + '</div></div>' : '';
