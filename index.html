@@ -596,8 +596,8 @@ function computeNoteSimilarity(notes) {
 // then the full assessment ~30 days later as an "Assessment Note" (90791 /
 // H0001). Until then the treatment plan has generic goals, so "goal link"
 // documentation issues are expected and shouldn't send a note to review.
-// Status comes from the client_assessment_status view, filled by importing
-// the Pimsy notes export (org-wide: Filters > Import Pimsy notes export).
+// Status comes from the client_assessment_status view, filled automatically
+// by the Data & Staff Hub's Pimsy Notes upload (no separate upload here).
 // Clients are matched on the digits of the client # (C-C-39161 -> 39161).
 // ══════════════════════════════════════════════════════════════════
 var provisionalByClient = {};  // client key -> { p: provisional date, f: full assessment date or null }
@@ -616,88 +616,12 @@ function provisionalStatus(n) {
 }
 function isProvisionalChart(n) { return !!provisionalStatus(n); }
 
-// ── Import from the Pimsy notes export ──
-// Reads the file in the browser and saves ONLY: client # digits, service date,
-// and whether the note was a provisional or full assessment. Names, note text,
-// diagnoses and insurance never leave the reviewer's computer.
-// Pimsy sometimes shifts a row's cells one column left when a field is blank,
-// so the note type is found by scanning left from the "Note Type" column, and
-// the billing code by searching the whole row.
-var XLSX_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-function loadXlsxLib() {
-  if (window.XLSX) return Promise.resolve();
-  return new Promise(function(resolve, reject){
-    var s = document.createElement('script');
-    s.src = XLSX_SRC; s.onload = resolve;
-    s.onerror = function(){ reject(new Error('Could not load the spreadsheet reader (cdnjs.cloudflare.com blocked?)')); };
-    document.head.appendChild(s);
-  });
-}
-function toIsoDate(v) {
-  if (v instanceof Date && !isNaN(v)) return v.getFullYear() + '-' + String(v.getMonth() + 1).padStart(2, '0') + '-' + String(v.getDate()).padStart(2, '0');
-  var s = String(v == null ? '' : v).trim(), m;
-  if ((m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))) return m[1] + '-' + m[2].padStart(2, '0') + '-' + m[3].padStart(2, '0');
-  if ((m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/))) return (m[3].length === 2 ? '20' + m[3] : m[3]) + '-' + m[1].padStart(2, '0') + '-' + m[2].padStart(2, '0');
-  return null;
-}
-function extractAssessmentEvents(rows) {
-  var hdr = (rows[0] || []).map(function(h){ return String(h == null ? '' : h).trim(); });
-  var iDate = hdr.indexOf('Service Date'), iClient = hdr.indexOf('Client #'), iType = hdr.indexOf('Note Type');
-  if (iDate < 0 || iClient < 0 || iType < 0) throw new Error('This doesn’t look like the Pimsy notes export (need Service Date, Client # and Note Type columns).');
-  var seen = {}, events = [], skipped = 0;
-  for (var r = 1; r < rows.length; r++) {
-    var row = rows[r] || [];
-    var type = null;
-    for (var j = iType; j >= Math.max(0, iType - 3); j--) {
-      var v = String(row[j] == null ? '' : row[j]).trim();
-      if (!v || typeof row[j] === 'boolean' || /^(true|false)$/i.test(v)) continue;
-      type = v; break;
-    }
-    var ev = null;
-    if (type === 'Provisional Note') ev = 'provisional';
-    else if (type === 'Assessment Note' && row.some(function(c){ return typeof c === 'string' && /\((?:90791|H0001)\b/.test(c); })) ev = 'full';
-    if (!ev) continue;
-    var key = clientKey(row[iClient]), date = toIsoDate(row[iDate]);
-    if (!key || !date) { skipped++; continue; }
-    var id = key + '|' + ev + '|' + date;
-    if (seen[id]) continue;
-    seen[id] = true;
-    events.push({ client_key: key, event_type: ev, event_date: date });
-  }
-  return { events: events, skipped: skipped };
-}
-async function importPimsyExport(file) {
-  var st = document.getElementById('importPimsyStatus');
-  var say = function(t){ if (st) st.textContent = t; };
-  try {
-    say('Reading ' + file.name + '…');
-    await loadXlsxLib();
-    var wb = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true });
-    var rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true, defval: null });
-    var out = extractAssessmentEvents(rows);
-    if (!out.events.length) { say('No provisional or full assessment notes found in that file.'); return; }
-    var prov = out.events.filter(function(e){ return e.event_type === 'provisional'; }).length;
-    if (!confirm('Found ' + prov + ' provisional and ' + (out.events.length - prov) + ' full assessment notes. Save to update provisional charts? (Only client # digits, dates and note type are saved.)')) { say(''); return; }
-    say('Saving…');
-    for (var i = 0; i < out.events.length; i += 500) {
-      var res = await sb.from('client_assessment_events').upsert(out.events.slice(i, i + 500), { onConflict: 'client_key,event_type,event_date', ignoreDuplicates: true });
-      if (res.error) throw new Error(res.error.message);
-    }
-    await loadProvisionalStatus();
-    var open = Object.keys(provisionalByClient).filter(function(k){ return !provisionalByClient[k].f; }).length;
-    say('Imported. ' + open + ' charts currently provisional.' + (out.skipped ? ' (' + out.skipped + ' rows skipped: missing client # or date)' : ''));
-    refreshNotesView();
-  } catch (e) {
-    say('Import failed: ' + e.message);
-  }
-}
-
 async function loadProvisionalStatus() {
   var res = await fetchAllRows(function(from, to) {
     return sb.from('client_assessment_status').select('client_key, provisional_date, full_assessment_date')
       .order('client_key', { ascending: true }).range(from, to);
   });
-  if (res.error) { console.warn('Provisional chart status unavailable (run note_reviews_and_provisional.sql?)', res.error); return; }
+  if (res.error) { console.warn('Provisional chart status unavailable (run Note Reviews and Provisional Charts.sql?)', res.error); return; }
   var map = {};
   (res.data || []).forEach(function(r){
     var k = clientKey(r.client_key);
@@ -1117,7 +1041,6 @@ function renderShell(loading) {
               <option value="365">Last year</option>
               <option value="all">All time</option>
             </select>
-            ${currentReviewer.role === 'org_wide' ? '<button class="fb-btn" id="importPimsyBtn" title="Upload the Pimsy notes export (.xlsx) to update which charts are still provisional. Only client #, date and note type are saved.">Import Pimsy notes export</button><input type="file" id="importPimsyFile" accept=".xlsx,.xls,.csv" style="display:none"/><span id="importPimsyStatus" class="fb-synced"></span>' : ''}
           </div>
         </div>
         <div id="scanStatus" class="scan-status"></div>
@@ -1173,11 +1096,6 @@ function renderShell(loading) {
   };
   var groupChk = document.getElementById('groupByCoachChk');
   if (groupChk) groupChk.onchange = function(){ groupByCoach = groupChk.checked; renderNotesList(); };
-  var impBtn = document.getElementById('importPimsyBtn'), impFile = document.getElementById('importPimsyFile');
-  if (impBtn && impFile) {
-    impBtn.onclick = function(){ impFile.value = ''; impFile.click(); };
-    impFile.onchange = function(){ if (impFile.files && impFile.files[0]) importPimsyExport(impFile.files[0]); };
-  }
   updateMoreFiltersCount();
   updateScanStatus();
   document.querySelectorAll('.mode-tab').forEach(function(tab){
@@ -1544,7 +1462,7 @@ function showToast(msg, undoFn) {
 // ── REVIEW ACTIONS (11/11/26) ──
 // Browser accounts can't UPDATE dap_note_analytics directly (that lockdown is
 // intentional). Every review action goes through the review_note_action()
-// database function instead (note_reviews_and_provisional.sql): it checks the
+// database function instead (Note Reviews and Provisional Charts.sql): it checks the
 // note is in the reviewer's scope, writes only the review columns, stamps the
 // reviewer's name server-side, and logs the action in note_reviews.
 // Returns { fields } on success or { error } -- fields are what the server saved.
@@ -1558,7 +1476,7 @@ async function reviewAction(ids, action, opts) {
   if (res.error) {
     var msg = res.error.message || 'Unknown error';
     if (/review_note_action/.test(msg) && /(not find|does not exist|schema cache)/i.test(msg)) {
-      msg = 'The review function isn’t set up in Supabase yet. Run note_reviews_and_provisional.sql, then try again.';
+      msg = 'The review function isn’t set up in Supabase yet. Run Note Reviews and Provisional Charts.sql, then try again.';
     }
     return { error: { message: msg } };
   }
