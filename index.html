@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://thrive-hub.onrender.com/shared/thrive-account-menu.js"></script>
 <style>
 :root{
   --thrive-blue:#3c50a0; --thrive-blue-deep:#283c8c; --thrive-blue-dark:#1a2861;
@@ -301,8 +302,27 @@ body{font-family:'IBM Plex Sans',system-ui,sans-serif;background:var(--bg);color
 #bulkBar button,#toast button{font-family:inherit;font-size:13px;font-weight:600;border-radius:6px;padding:6px 12px;cursor:pointer;border:none;background:var(--thrive-yellow);color:var(--thrive-blue-dark);}
 #bulkBar button.ghost{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);}
 #toast button{background:transparent;color:var(--thrive-yellow);text-decoration:underline;padding:0 4px;}
+/* Standard sign-in card (calibration 11/12/26) */
+.ag-wrap{position:fixed;inset:0;z-index:99999;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:20px}
+.ag-card{background:var(--paper);border:1px solid var(--rule);border-radius:8px;box-shadow:var(--shadow);padding:34px 30px;max-width:360px;width:100%}
+.ag-mark{font-family:'Fraunces',Georgia,serif;font-style:italic;font-size:26px;color:var(--ink)}
+.ag-sub{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--thrive-blue);font-weight:600;margin:4px 0 22px}
+.ag-card label{display:block;font-size:11px;font-weight:600;color:var(--ink-soft);margin-bottom:5px}
+.ag-card input{width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid var(--rule);border-radius:5px;margin-bottom:14px;font-size:13.5px;font-family:inherit;background:var(--bg);color:var(--ink)}
+.ag-card input:focus{outline:2px solid var(--thrive-blue);outline-offset:1px}
+.ag-card button{width:100%;padding:10px;background:var(--thrive-blue);color:#fff;border:none;border-radius:5px;font-weight:600;font-size:13.5px;cursor:pointer;font-family:inherit}
+.ag-card button:disabled{opacity:.6;cursor:default}
+.ag-err{display:none;color:var(--bad);font-size:12px;margin:-6px 0 14px;line-height:1.4}
+.ag-err.visible{display:block}
+.ag-hint{font-size:11px;color:var(--muted);margin-top:14px;text-align:center}
+.topbar .who{display:flex;align-items:center;gap:12px}
+.topbar .who .scope{text-align:right}
+.topbar .ta-menu{text-align:left}
 /* phones */
 @media (max-width:640px){
+  .topbar{padding:10px 14px}
+  .topbar .badge .sub{display:none}
+  .topbar .who .scope{display:none}
   .content{padding-left:12px;padding-right:12px;}
   .mode-toggle{overflow-x:auto;flex-wrap:nowrap;}
   .mode-tab{white-space:nowrap;padding:9px 12px;font-size:11px;}
@@ -840,19 +860,18 @@ function reviewPrompts(n) {
 // ── LOGIN ──
 function renderLogin(errorMsg) {
   app.innerHTML = `
-    <div class="topbar">
-      <span class="badge">Thrive<span class="sep">/</span>Flagged Notes Tracker <span class="sub">&middot; Utilization Management &amp; Oversight</span></span>
-    </div>
-    <div class="login-wrap">
-      <div class="eyebrow">Restricted Access</div>
-      <h2>Sign in</h2>
-      <p>Access is restricted to clinical/community leadership and division directors. Contact Brandon if you need an account.</p>
-      <label for="loginEmail">Email</label>
-      <input type="email" id="loginEmail" placeholder="you@thrivepeersupport.com"/>
-      <label for="loginPassword">Password</label>
-      <input type="password" id="loginPassword" placeholder="••••••••"/>
-      <button class="login-btn" id="loginBtn">Sign In</button>
-      <div class="login-error ${errorMsg ? 'visible' : ''}" id="loginError">${errorMsg || ''}</div>
+    <div class="ag-wrap">
+      <div class="ag-card">
+        <div class="ag-mark">Thrive</div>
+        <div class="ag-sub">Flagged Notes Tracker</div>
+        <label for="loginEmail">Email</label>
+        <input type="email" id="loginEmail" autocomplete="username" placeholder="you@thrivepeersupport.com"/>
+        <label for="loginPassword">Password</label>
+        <input type="password" id="loginPassword" autocomplete="current-password"/>
+        <div class="ag-err ${errorMsg ? 'visible' : ''}" id="loginError">${errorMsg ? escapeHtml(errorMsg) : ''}</div>
+        <button id="loginBtn">Sign In</button>
+        <div class="ag-hint">Managers, directors and leadership. Forgot your password or need access? Contact Brandon.</div>
+      </div>
     </div>
   `;
   document.getElementById('loginBtn').onclick = handleLogin;
@@ -887,10 +906,16 @@ async function handleLogin() {
 }
 
 async function handleSignOut() {
-  await sb.auth.signOut();
-  landingChosen = false;
-  currentReviewer = null;
-  renderLogin();
+  try { await sb.auth.signOut(); } catch (e) {}
+  location.reload(); // clears everything that was on screen
+}
+// Account menu (shared/thrive-account-menu.js), same as every other hub (11/12/26).
+function accountChipHtml() {
+  if (window.ThriveAccount) {
+    ThriveAccount.init({ client: sb, name: currentReviewer.name, email: currentReviewer.email, onSignOut: handleSignOut });
+    return ThriveAccount.chip();
+  }
+  return '<button class="signout-btn" onclick="handleSignOut()">Sign out</button>';
 }
 
 // ── DATA ──
@@ -999,9 +1024,8 @@ function renderShell(loading) {
     <div class="topbar">
       <span class="badge">Thrive<span class="sep">/</span>Flagged Notes Tracker <span class="sub">&middot; Utilization Management &amp; Oversight</span></span>
       <div class="who">
-        Signed in as <strong>${escapeHtml(currentReviewer.name)}</strong>
-        <div class="scope">Scope: ${escapeHtml(scopeLabel)}</div>
-        <button class="signout-btn" id="signOutBtn">Sign Out</button>
+        <div class="scope">${escapeHtml(scopeLabel)}</div>
+        ${accountChipHtml()}
       </div>
     </div>
     <div class="content">
@@ -1079,7 +1103,6 @@ function renderShell(loading) {
       </div>
     </div>
   `;
-  document.getElementById('signOutBtn').onclick = handleSignOut;
   document.getElementById('refreshBtn').onclick = function(){ autoScanDone = 0; loadAndRenderDashboard(); };
   var dateRangeSelectEl = document.getElementById('dateRangeSelect');
   if (dateRangeSelectEl) {
