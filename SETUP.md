@@ -12,6 +12,15 @@ Single-file app (`index.html`) — oversight/compliance tool for managers and di
 
 Split out of the `thrive-hub` repo (previously `tracker.html`) on 9/11/26. It doesn't share data with Data & Staff Hub — it reads its own relational `roster` table (provider_email → manager_id) plus the shared `dap_note_analytics` table — so it doesn't belong bundled with either that repo or Program Hub's board/funder-facing reporting tools. Its actual audience is any manager or director across any program, so it gets its own single deployment that every hub links out to.
 
+## Calibration (11/12/26)
+
+- Standard sign-in card (cream background, white card, italic "Thrive" mark, "Forgot your password or need access?" line), same as every hub.
+- Account menu in the top bar ("Signed in as ▾", with Change password and Sign out), from `https://thrive-hub.onrender.com/shared/thrive-account-menu.js`. The old Sign Out button is gone, and signing out reloads the page so nothing stays on screen.
+- Sign-in error messages are escaped before they're shown.
+- Phones: the top bar shortens, and the scope line hides below 640px.
+- Already up to standard before this pass: every request uses the signed-in Supabase client, nothing is kept in browser storage, and nothing loads before sign-in.
+- **Still open:** the `grade-notes` Edge Function source (`edge/grade-notes/index.ts`) wasn't part of this review. Confirm it checks the caller against `reviewers` before grading (see Compliance checks below).
+
 ## Live URL
 
 `https://thrive-flagged-notes-tracker.onrender.com`, confirmed live 9/11/26. These link here:
@@ -118,5 +127,6 @@ Run `roster_import.sql` once in the Supabase SQL Editor. It's safe to re-run. It
 5. Prints a check-up list: notes from people not on the roster, roster staff with no notes in 30 days, and old roster rows not on the supervision list.
 
 Tested against a local Postgres copy of the schema, not your live database.
+
 
 
